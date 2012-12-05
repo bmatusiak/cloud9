@@ -734,7 +734,7 @@ module.exports = ext.register("ext/tree/tree", {
         this.scrollPos = trFiles.$ext.scrollTop;
 
         trFiles.getModel().load("<data><folder type='folder' name='" +
-            ide.projectName + "' path='" + ide.davPrefix + "' root='1'/></data>");
+            ide.projectName + "' path='" + ide.davPrefix + (ide.treeBranch ? ide.treeBranch : "") + "' root='1'/></data>");
         this.expandedList = {};
 
         // Make sure the "get" attribute is empty so the file tree doesn't
@@ -763,15 +763,25 @@ module.exports = ext.register("ext/tree/tree", {
     },
     
     setPath : function(newPath) {
-        ide.davPrefix = newPath+"/";
-        var prefix = ide.davPrefix.split("/");
-        ide.projectName = prefix[prefix.length-2];
-        this.refresh();
+        var _self = this;
+        newPath = newPath.replace(ide.davPrefix,"");
+        
+        ide.treeBranch = newPath;
+        
+        if(!ide.origProjectName)ide.origProjectName = ide.projectName;
+        
+        ide.projectName = ide.treeBranch.split("/").pop();
+        //ide.dispatchEvent("treechange", { type: "reloadtree" });
+        
+        _self.expandedNodes    = [];
+        _self.expandedList     = {};
+    
+            _self.refresh();
+
     },
     resetPath : function(newPath) {
-        ide.davPrefix = "/workspace";
-        var prefix = ide.davPrefix.split("/");
-        ide.projectName = prefix[prefix.length-1];
+        ide.projectName = ide.origProjectName || ide.projectName;
+        ide.treeBranch = false;
         this.refresh();
     },
 
