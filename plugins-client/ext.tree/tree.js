@@ -763,25 +763,19 @@ module.exports = ext.register("ext/tree/tree", {
     },
     
     setPath : function(newPath) {
-        var _self = this;
         newPath = newPath.replace(ide.davPrefix,"");
-        
         ide.treeBranch = newPath;
-        
         if(!ide.origProjectName)ide.origProjectName = ide.projectName;
-        
         ide.projectName = ide.treeBranch.split("/").pop();
-        //ide.dispatchEvent("treechange", { type: "reloadtree" });
-        
-        _self.expandedNodes    = [];
-        _self.expandedList     = {};
-    
-            _self.refresh();
-
+        this.expandedNodes    = [];
+        this.expandedList     = {};
+        this.refresh();
     },
     resetPath : function(newPath) {
         ide.projectName = ide.origProjectName || ide.projectName;
         ide.treeBranch = false;
+        this.expandedNodes    = [];
+        this.expandedList     = {};
         this.refresh();
     },
 
