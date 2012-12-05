@@ -762,20 +762,20 @@ module.exports = ext.register("ext/tree/tree", {
         return false;
     },
     
-    setPath : function(newPath) {
-        newPath = newPath.replace(ide.davPrefix,"");
+    setPath : function(Path) {
+        var newPath = Path.replace(ide.davPrefix,"");
         ide.treeBranch = newPath;
         if(!ide.origProjectName)ide.origProjectName = ide.projectName;
         ide.projectName = ide.treeBranch.split("/").pop();
         this.expandedNodes    = [];
-        this.expandedList     = {};
+        this.expandedNodes.push(Path);
         this.refresh();
     },
     resetPath : function(newPath) {
         ide.projectName = ide.origProjectName || ide.projectName;
         ide.treeBranch = false;
         this.expandedNodes    = [];
-        this.expandedList     = {};
+        this.expandedNodes.push(ide.davPrefix);
         this.refresh();
     },
 
