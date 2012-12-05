@@ -100,6 +100,15 @@
             <a:item match="[file|folder|project]" visible="{!require('core/ide').readonly}" onclick="
                 require('ext/filesystem/filesystem').createFolder();
             ">New Folder</a:item>
+            <a:divider visible="{!require('core/ide').readonly}"/>
+            <a:item id="itemCtxTreeSetPath" match="[folder|project]" visible="{!require('core/ide').readonly}" 
+              onclick="
+                require('ext/tree/tree').setPath(require('ext/tree/tree').treeSelection.path);
+            ">Set Project Path</a:item>
+            <a:item id="itemCtxTreeReSetPath" match="[folder|project]" visible="{!require('core/ide').readonly}" 
+              onclick="
+                require('ext/tree/tree').resetPath();
+            ">Reset Project Path</a:item>
         </a:menu>
     </a:window>
 </a:application>

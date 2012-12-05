@@ -163,6 +163,7 @@ module.exports = ext.register("ext/tree/tree", {
             // This checks that each expanded folder has a root that's already
             // been saved
             var splitPrefix = ide.davPrefix.split("/");
+            
             splitPrefix.pop();
             var rootPrefixNodes = splitPrefix.length;
             var rootPrefix = splitPrefix.join("/");
@@ -759,6 +760,19 @@ module.exports = ext.register("ext/tree/tree", {
         }
 
         return false;
+    },
+    
+    setPath : function(newPath) {
+        ide.davPrefix = newPath+"/";
+        var prefix = ide.davPrefix.split("/");
+        ide.projectName = prefix[prefix.length-2];
+        this.refresh();
+    },
+    resetPath : function(newPath) {
+        ide.davPrefix = "/workspace";
+        var prefix = ide.davPrefix.split("/");
+        ide.projectName = prefix[prefix.length-1];
+        this.refresh();
     },
 
     destroy : function(){
