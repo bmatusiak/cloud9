@@ -25,11 +25,15 @@
 
         <a:menu id="mnuFilesSettings">
             <a:item onclick="require('ext/tree/tree').refresh()">Refresh Project Tree</a:item>
+            <a:item id="itemCtxTreeReSetPath" match="[folder|project]" 
+              onclick="
+                require('ext/tree/tree').resetPath();
+            ">Reset Workspace Path</a:item>
             <a:divider />
         </a:menu>
 
         <a:vsplitbox id="vboxTreeContainer" anchors="0 0 0 0" minheight="1">
-            <a:tree id="trFiles" canrename="true" border="0" simpledata="true"
+        <a:tree id="trFiles" canrename="true" border="0" simpledata="true"
               contextmenu="mnuCtxTree" multiselect="true" reselectable="true"
               onbeforeremove="return require('core/util').removeInteractive(this)"
               onbeforemove="this.disable();"
@@ -100,14 +104,10 @@
                 require('ext/filesystem/filesystem').createFolder();
             ">New Folder</a:item>
             <a:divider visible="{!require('core/ide').readonly}"/>
-            <a:item id="itemCtxTreeSetPath" match="[folder|project]" visible="{!require('core/ide').readonly}" 
+            <a:item id="itemCtxTreeFavPath" match="[folder[not(@root)]]" visible="{!require('core/ide').readonly}" 
               onclick="
-                require('ext/tree/tree').setPath(require('ext/tree/tree').treeSelection.path);
-            ">Set Project Path</a:item>
-            <a:item id="itemCtxTreeReSetPath" match="[folder|project]" visible="{!require('core/ide').readonly}" 
-              onclick="
-                require('ext/tree/tree').resetPath();
-            ">Reset Project Path</a:item>
+                require('ext/tree/tree').favorPath(require('ext/tree/tree').treeSelection);
+            ">Add Favorite Path</a:item>
         </a:menu>
     </a:window>
 </a:application>
