@@ -56,6 +56,7 @@ module.exports = ext.register("ext/tree/tree", {
     expandedNodes    : [],
     loadedSettings   : 0,
     expandedList     : {},
+    favTrees         : [],
     treeSelection    : { path : null, type : null },
     loading          : false,
     changed          : false,
@@ -268,6 +269,10 @@ module.exports = ext.register("ext/tree/tree", {
 
     init : function() {
         var _self = this;
+        
+        fs.model.load(this.createModel());
+
+        fs.model.setAttribute("whitespace", false);
 
         // Set the panel var for the panels extension
         this.panel = winFilesViewer;
@@ -732,9 +737,16 @@ module.exports = ext.register("ext/tree/tree", {
         trFiles.removeEventListener("scroll", $trScroll);
 
         this.scrollPos = trFiles.$ext.scrollTop;
+        
+        function getRoots(){
+            
+        }
+        
+        var dataModel = this.createModel();
+        trFiles.getModel().load(dataModel);
+        fs.model.load(dataModel);
+        fs.model.setAttribute("whitespace", false);
 
-        trFiles.getModel().load("<data><folder type='folder' name='" +
-            ide.projectName + "' path='" + ide.davPrefix + (ide.treeBranch ? ide.treeBranch : "") + "' root='1'/></data>");
         this.expandedList = {};
 
         // Make sure the "get" attribute is empty so the file tree doesn't
@@ -749,7 +761,15 @@ module.exports = ext.register("ext/tree/tree", {
         // Now re-attach the scroll listener
         trFiles.addEventListener("scroll", $trScroll);
     },
-
+    createModel : function(){
+        var _self = this;
+        var roots = "<folder type='folder' name='" + ide.projectName + "' path='" + ide.davPrefix + "' root='1'/>";
+            _self.favTrees.forEach(function(path) {
+                var pathName = path.replace(ide.davPrefix,ide.projectName);
+                roots += "<folder type='folder' name='" + pathName + "' path='" + path + "' root='1'/>";
+            });
+            return "<data>"+roots+"</data>";
+    },
     show : function(e) {
         if (!this.panel || !this.panel.visible) {
             panels.activate(this);
@@ -761,21 +781,16 @@ module.exports = ext.register("ext/tree/tree", {
 
         return false;
     },
-    
-    setPath : function(Path) {
-        var newPath = Path.replace(ide.davPrefix,"");
-        ide.treeBranch = newPath;
-        if(!ide.origProjectName)ide.origProjectName = ide.projectName;
-        ide.projectName = ide.treeBranch.split("/").pop();
-        this.expandedNodes    = [];
-        this.expandedNodes.push(Path);
+    favorPath : function(ts) {
+        this.favTrees.push(ts.path);
+        this.expandedNodes.push(ts.path);
         this.refresh();
     },
-    resetPath : function(newPath) {
-        ide.projectName = ide.origProjectName || ide.projectName;
-        ide.treeBranch = false;
-        this.expandedNodes    = [];
-        this.expandedNodes.push(ide.davPrefix);
+    unfavorPath : function(Path) {
+        for(var i in this.favTrees){
+            if(this.favTrees[i] == Path)
+                delete this.favTrees[i];
+        }
         this.refresh();
     },
 
