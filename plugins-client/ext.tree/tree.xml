@@ -42,6 +42,7 @@
                 <a:each match="[project|file|folder]" sort="[@name]" sort-method="filesort">
                     <a:insert match="[folder]" get="{davProject.readdir(%[.].getAttribute('path'))}" />
                     <a:caption match="[@name]" value="{([../@changed] == 1 ? '*' : '') + [.]}" />
+                    <a:icon match="[folder[@root]|project[@root]]" value="folder_root.png" />
                     <a:icon match="[folder|project]" value="folder.png" />
                     <a:selectable match="[folder|file[not(@type='fileupload')]]" />
                     <a:icon match="[file[@type='fileupload']]" value="file-tree-load-spinner.gif" />
