@@ -27,8 +27,8 @@
             <a:item onclick="require('ext/tree/tree').refresh()">Refresh Project Tree</a:item>
             <a:item id="itemCtxTreeReSetPath" match="[folder|project]" 
               onclick="
-                require('ext/tree/tree').resetPath();
-            ">Reset Workspace Path</a:item>
+                require('ext/tree/tree').unfavorAllPaths();
+            ">Reset All Favorite Paths</a:item>
             <a:divider />
         </a:menu>
 
@@ -108,6 +108,10 @@
               onclick="
                 require('ext/tree/tree').favorPath(require('ext/tree/tree').treeSelection);
             ">Add Favorite Path</a:item>
+            <a:item id="itemCtxTreeFavPath" match="[folder[@root]]" visible="{!require('core/ide').readonly}" 
+              onclick="
+                require('ext/tree/tree').unfavorPath(require('ext/tree/tree').treeSelection);
+            ">Remove Favorite Path</a:item>
         </a:menu>
     </a:window>
 </a:application>
