@@ -810,7 +810,7 @@ module.exports = ext.register("ext/tree/tree", {
     unfavorPath : function(ts) {
         for(var i in this.favTrees){
             if(this.favTrees[i] == ts.path)
-                delete this.favTrees[i];
+                this.favTrees.splice(i,1);
         }
         this.refresh();
     },
