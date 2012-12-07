@@ -34,9 +34,9 @@ function getPort(callback) {
 }
 
 function runC9(runPort, debugPort) {
-    c9 = proc.run("/usr/local/bin/node " + "server.js" + " -p " + runPort + " -b " + debugPort + " -w " + process.env.HOME, {
+    c9 = proc.run("/usr/local/bin/node " + __dirname+"/../server.js" + " -p " + runPort + " -b " + debugPort + " -w " + process.env.HOME, {
         env: process.env,
-        cwd: process.env.HOME+"/nodeApps/cloud9Cur/"
+        cwd: process.env.HOME
     },
 
     function(stderr, stdout, code, signal) {
@@ -53,7 +53,7 @@ function runC9(runPort, debugPort) {
             var server = stdout.replace("IDE server initialized. Listening on ", "");
             server = server.replace(/(\r\n|\n|\r|\t| + )/gm, "");
             setTimeout(function() {
-                runGoogleChrom(server,process.env.HOME);
+                //runGoogleChrom(server,process.env.HOME);
             }, 1000);
         }
     });
