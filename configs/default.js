@@ -145,8 +145,8 @@ var config = [
             //"ext/githistory/githistory",
             "ext/autosave/autosave",
             "ext/revisions/revisions",
-            "ext/language/liveinspect"
-            //"ext/splitview/splitview"
+            "ext/language/liveinspect",
+            "ext/splitview/splitview"
             //"ext/minimap/minimap"
         ]
     }, {
@@ -194,6 +194,7 @@ var config = [
     "./cloud9.run.python",
     "./cloud9.run.apache",
     "./cloud9.run.php",
+    "./cloud9.run.other",
     "architect/plugins/architect.log",
     "./cloud9.ide.auth",
     "./cloud9.ide.git",
@@ -211,6 +212,7 @@ var config = [
     "./cloud9.ide.run-apache",
     "./cloud9.ide.run-ruby",
     "./cloud9.ide.run-php",
+    "./cloud9.ide.run-other",
     "./cloud9.run.python",
     "./cloud9.ide.revisions",
     {
