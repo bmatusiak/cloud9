@@ -95,6 +95,9 @@ module.exports = ext.register("ext/tree/tree", {
          */
         ide.addEventListener("init.ext/filesystem/filesystem", function(e) {
             _self.model = e.ext.model;
+            
+            _self.model.load(_self.createModel());
+            _self.model.setAttribute("whitespace", false);
 
             // loadedSettings is set after "settings.load" is dispatched.
             // Thus if we have our model setup and we have the cached expanded
@@ -109,12 +112,27 @@ module.exports = ext.register("ext/tree/tree", {
                 apf.isTrue(model.queryValue('auto/projecttree/@showhidden')));
 
             _self.scrollPos = model.queryValue('auto/projecttree/@scrollpos');
-
+            
+            var favTreesStore = model.queryValue("auto/favTreesStore");
+            if (favTreesStore) {
+                try {
+                    _self.favTrees = JSON.parse(favTreesStore);
+                }
+                catch (ex) {
+                    _self.favTrees = [];
+                }
+            }else{
+                _self.favTrees = [];
+            }
+            console.log("loaded fav trees",_self.favTrees);
+            fs.model.load(_self.createModel());
+            
             // auto/projecttree contains the saved expanded nodes
             var strSettings = model.queryValue("auto/projecttree");
             if (strSettings) {
                 try {
                     _self.expandedNodes = JSON.parse(strSettings);
+                    console.log("loaded expanded nodes",_self.expandedNodes);
                 }
                 catch (ex) {
                     _self.expandedNodes = [ide.davPrefix];
@@ -165,7 +183,7 @@ module.exports = ext.register("ext/tree/tree", {
             // been saved
             var splitPrefix = ide.davPrefix.split("/");
             
-            splitPrefix.pop();
+            //splitPrefix.pop();
             var rootPrefixNodes = splitPrefix.length;
             var rootPrefix = splitPrefix.join("/");
             var cc, parts;
@@ -181,9 +199,20 @@ module.exports = ext.register("ext/tree/tree", {
 
                 if (!parts.length)
                     _self.expandedNodes.push(path);
+                else{
+                    for (var i in _self.favTrees) {
+                        if(_self.favTrees[i] == path)
+                            _self.expandedNodes.push(path);
+                    }
+                }
             }
 
             expandedNodes.nodeValue = JSON.stringify(_self.expandedNodes);
+            
+            var favTreesStore = apf.createNodeFromXpath(e.model.data, "auto/favTreesStore/text()");
+            favTreesStore.nodeValue = JSON.stringify(_self.favTrees);
+            console.log("saved fav trees",_self.favTrees);
+            console.log("saved expanded nodes",_self.expandedNodes);
             _self.changed = false;
         });
 
@@ -270,10 +299,6 @@ module.exports = ext.register("ext/tree/tree", {
     init : function() {
         var _self = this;
         
-        fs.model.load(this.createModel());
-
-        fs.model.setAttribute("whitespace", false);
-
         // Set the panel var for the panels extension
         this.panel = winFilesViewer;
         this.nodes.push(winFilesViewer);
@@ -480,7 +505,8 @@ module.exports = ext.register("ext/tree/tree", {
             if (!e.xmlNode)
                 return;
             _self.expandedList[e.xmlNode.getAttribute(apf.xmldb.xmlIdTag)] = e.xmlNode;
-
+            
+            //_self.expandedNodes.push(e.xmlNode.getAttribute("path"));
             // Only save if we are not loading the tree
             if (!_self.loading) {
                 _self.changed = true;
@@ -569,7 +595,7 @@ module.exports = ext.register("ext/tree/tree", {
         // Sort the cached list so it's more probable that nodes near the top of
         // the tree are loaded first, giving the user more visual feedback that
         // something is happening
-        this.expandedNodes.sort();
+        //this.expandedNodes.sort();
 
         this.loading = true;
 
@@ -738,15 +764,8 @@ module.exports = ext.register("ext/tree/tree", {
 
         this.scrollPos = trFiles.$ext.scrollTop;
         
-        function getRoots(){
-            
-        }
         
-        var dataModel = this.createModel();
-        trFiles.getModel().load(dataModel);
-        fs.model.load(dataModel);
-        fs.model.setAttribute("whitespace", false);
-
+        trFiles.getModel().load(this.createModel());
         this.expandedList = {};
 
         // Make sure the "get" attribute is empty so the file tree doesn't
@@ -760,6 +779,8 @@ module.exports = ext.register("ext/tree/tree", {
 
         // Now re-attach the scroll listener
         trFiles.addEventListener("scroll", $trScroll);
+        
+        //settings.load();
     },
     createModel : function(){
         var _self = this;
@@ -786,14 +807,28 @@ module.exports = ext.register("ext/tree/tree", {
         this.expandedNodes.push(ts.path);
         this.refresh();
     },
-    unfavorPath : function(Path) {
+    unfavorPath : function(ts) {
         for(var i in this.favTrees){
-            if(this.favTrees[i] == Path)
+            if(this.favTrees[i] == ts.path)
                 delete this.favTrees[i];
         }
         this.refresh();
     },
-
+    unfavorAllPaths : function() {
+        this.favTrees = [];
+        this.refresh();
+    },
+    isTreeRoot : function(isRemove){
+        if(ide.readonly)
+            return false;
+        
+        var selectedPath = this.treeSelection.getAttribute("path");
+        for(var i in this.favTrees){
+            if(this.favTrees[i] == selectedPath)
+                return isRemove ? false : true;
+        }
+        return true;
+    },
     destroy : function(){
         commands.removeCommandByName("opentreepanel");
         panels.unregister(this);
