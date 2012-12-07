@@ -3,6 +3,7 @@ var proc = cmd();
 
 var netutil = require("netutil");
 
+var workspace = process.env.HOME;
 /*
     /home/bmatusiak/nodeApps/cloud9Cur/bin/cloud9.sh -w ~/  & sleep 1 &&
     google-chrome --app="http://localhost:3131/" --user-data-dir=~/.config/cloud9
@@ -34,7 +35,7 @@ function getPort(callback) {
 }
 
 function runC9(runPort, debugPort) {
-    c9 = proc.run("/usr/local/bin/node " + __dirname+"/../server.js" + " -p " + runPort + " -b " + debugPort + " -w " + process.env.HOME, {
+    c9 = proc.run("/usr/local/bin/node " + __dirname+"/../server.js" + " -p " + runPort + " -b " + debugPort + " -w " + workspace, {
         env: process.env,
         cwd: process.env.HOME
     },
