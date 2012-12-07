@@ -53,7 +53,7 @@ function runC9(runPort, debugPort) {
             var server = stdout.replace("IDE server initialized. Listening on ", "");
             server = server.replace(/(\r\n|\n|\r|\t| + )/gm, "");
             setTimeout(function() {
-                //runGoogleChrom(server,process.env.HOME);
+                runGoogleChrom(server,process.env.HOME);
             }, 1000);
         }
     });
@@ -61,9 +61,10 @@ function runC9(runPort, debugPort) {
 
 function runGoogleChrom(url,wspath) {
     var chromeTmpAppDir = process.env.HOME + '/.config/cloud9-'+wspath.replace("/","_");
-    var cliCMD = 'google-chrome-app http://' + url + '/ ' + chromeTmpAppDir;
+    var cliCMD = './google-chrome-app http://' + url + '/ ' + chromeTmpAppDir;
     gChrome = proc.run(cliCMD, {
-        env: process.env
+        env: process.env,
+        cwd: __dirname
     }, function(stderr, stdout, code, signal) {
         console.log("gChrome died with", code, signal);
         if (c9 && c9.pid && !c9.killed) {
