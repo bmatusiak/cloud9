@@ -1,8 +1,6 @@
 #!/bin/sh
 
 
-make update
-
 case `uname -a` in
 Linux*x86_64*)  echo "Linux 64 bit"
     google-chrome --app="$1" --user-data-dir=$2
@@ -13,7 +11,8 @@ Linux*i686*)  echo "Linux 32 bit"
     ;;
 
 Darwin*)  echo  "OSX"
-    /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --app="$1" --user-data-dir=$2
+	sleep 2
+    /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --app="$1"
     ;;
 
 
