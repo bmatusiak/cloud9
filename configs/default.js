@@ -15,13 +15,14 @@ for (var i = 0; i < clientDirs.length; i++) {
     clientExtensions[name] = __dirname + "/../plugins-client/" + dir;
 }
 
-var projectDir = (argv.w && path.resolve(process.cwd(), argv.w)) || process.cwd();
+var projectDir = argv.w || process.cwd();
 var fsUrl = "/workspace";
 var vfsUrl = "/vfs";
 
 var port = argv.p || process.env.PORT || 3131;
 var host = argv.l || process.env.IP || "localhost";
 var debugPort = argv.b || process.env.DEBUG_PORT || 5858;
+var sshHost = argv.h;
 
 var config = [
     {
@@ -150,9 +151,6 @@ var config = [
             //"ext/minimap/minimap"
         ]
     }, {
-        packagePath: "vfs-architect/local",
-        root: "/"
-    }, {
         packagePath: "vfs-architect/http-adapter",
         mount: vfsUrl,
         httpRoot: "http://localhost:" + port + vfsUrl
@@ -223,5 +221,19 @@ var config = [
     "./cloud9.ide.state",
     "./cloud9.ide.watcher"
 ];
+if (!sshHost) {
+    config.push({
+        packagePath: "vfs-architect/local",
+        root: "/"
+    })
+}
+else {
+    config.push({
+        packagePath: "vfs-architect/ssh",
+        host: sshHost,
+        root: "/",
+        nodePath: "/usr/local/bin/node"
+    })
+}
 
 module.exports = config;
