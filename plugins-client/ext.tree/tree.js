@@ -259,7 +259,7 @@ module.exports = ext.register("ext/tree/tree", {
                 trFiles.add(xmlNode, parent);
             }
         });
-        ext.initExtension(_self);
+        //ext.initExtension(_self);
     },
 
     onReady: function() {
@@ -375,6 +375,7 @@ module.exports = ext.register("ext/tree/tree", {
                 _self.treeSelection.path = nodePath;
                 _self.treeSelection.type = nodeType;
                 
+                try{
                 var ts = _self.treeSelection;
                 itemCtxTreeFavPathDiv.setAttribute("visible","false");
                 itemCtxTreeRmFavPath.setAttribute("visible","false");
@@ -394,6 +395,7 @@ module.exports = ext.register("ext/tree/tree", {
                     itemCtxTreeFavPath.setAttribute("visible","false");
                     itemCtxTreeRmFavPath.setAttribute("visible","true");
                 }
+                }catch(e){}//markup not loaded
             }
         });
 
