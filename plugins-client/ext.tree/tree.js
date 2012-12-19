@@ -127,7 +127,7 @@ define(function(require, exports, module) {
                 else {
                     _self.favTrees = [];
                 }
-                console.log("loaded fav trees", _self.favTrees);
+                //console.log("loaded fav trees", _self.favTrees);
                 fs.model.load(_self.createModel());
 
                 // auto/projecttree contains the saved expanded nodes
@@ -135,7 +135,7 @@ define(function(require, exports, module) {
                 if (strSettings) {
                     try {
                         _self.expandedNodes = JSON.parse(strSettings);
-                        console.log("loaded expanded nodes", _self.expandedNodes);
+                        //console.log("loaded expanded nodes", _self.expandedNodes);
                     }
                     catch (ex) {
                         _self.expandedNodes = [ide.davPrefix];
@@ -206,8 +206,8 @@ define(function(require, exports, module) {
 
                 var favTreesStore = apf.createNodeFromXpath(e.model.data, "auto/favTreesStore/text()");
                 favTreesStore.nodeValue = JSON.stringify(_self.favTrees);
-                console.log("saved fav trees", _self.favTrees);
-                console.log("saved expanded nodes", _self.expandedNodes);
+                //console.log("saved fav trees", _self.favTrees);
+                //console.log("saved expanded nodes", _self.expandedNodes);
                 _self.changed = false;
             });
 
