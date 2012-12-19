@@ -217,7 +217,7 @@ var config = [
     "./cloud9.ide.run-node",
     {
         packagePath: "./cloud9.ide.run-npm-module",
-        allowShell: true
+        allowShell: false
     },
     "./cloud9.ide.run-python",
     "./cloud9.ide.run-apache",
