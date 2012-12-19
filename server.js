@@ -48,7 +48,7 @@ for (var p = 2; p < process.argv.length; p++) {
            boot();
    }
 
-   else if (process.argv[p] === "-P") {
+   else if (process.argv[p] === "-P" || process.argv[p] === "-PB") {
        packed = true;
        if (process.argv[p + 1] && process.argv[p + 1].indexOf("-") < 0) // use this specific packed file
             packedName = process.argv[++p];
@@ -57,7 +57,7 @@ for (var p = 2; p < process.argv.length; p++) {
 
        configName = "packed";
 
-       if(!path.existsSync("plugins-client/lib.packed/www/" + packedName) && !path.existsSync("plugins-client/lib.packed/www/" + packedName + ".gz")) {
+       if(process.argv[p] === "-PB" || !path.existsSync("plugins-client/lib.packed/www/" + packedName) && !path.existsSync("plugins-client/lib.packed/www/" + packedName + ".gz")) {
            console.log("Building packed file for first run...Please wait...");
            console.log("   |\\      _,,,---,,_\n" +
                        "   /,`.-'`'    -.  ;-;;,_\n" +
