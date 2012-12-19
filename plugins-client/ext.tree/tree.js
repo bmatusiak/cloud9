@@ -325,18 +325,13 @@ module.exports = ext.register("ext/tree/tree", {
         }));
         /*globals mnuCtxTree itemCtxTreeFavPathDiv itemCtxTreeRmFavPath itemCtxTreeFavPath */
         mnuCtxTree.ondisplay = function(e){
+            var ts = _self.treeSelection;
             itemCtxTreeFavPathDiv.setAttribute("visible","false");
             itemCtxTreeRmFavPath.setAttribute("visible","false");
             itemCtxTreeFavPath.setAttribute("visible","false");
             
-            var isFolder = (_self.treeSelection.type == "folder" && _self.treeSelection.path !== ide.davPrefix)
-            var isRootFolder = false;
-            for (var i in _self.favTrees) {
-                if (_self.favTrees[i] == _self.treeSelection.path){
-                    isRootFolder = true;
-                    break;
-                }
-            }
+            var isFolder = (ts.type == "folder" && ts.path !== ide.davPrefix)
+            var isRootFolder = _self.isRootPath(ts.path);
             
             if(isFolder && !isRootFolder){
                 itemCtxTreeFavPathDiv.setAttribute("visible","true");
@@ -610,9 +605,14 @@ module.exports = ext.register("ext/tree/tree", {
         // Get the parent node of the new items. If the path is the
         // same as `ide.davPrefix`, then we append to root
         function getParentNodeFromPath(path) {
+            var _isRootPath = _self.isRootPath(path);
             var parentNode;
-            if (path === ide.davPrefix) parentNode = trFiles.queryNode("folder[@root=1]");
-            else parentNode = trFiles.queryNode('//folder[@path=' + util.escapeXpathString(path) + ']');
+            if (path === ide.davPrefix) 
+                parentNode = trFiles.queryNode("folder[@root=1]");
+            else if(_isRootPath){
+                parentNode = trFiles.queryNode("folder[@root=1][@path=" + util.escapeXpathString(path) + "]");
+            }else
+                parentNode = trFiles.queryNode('//folder[@path=' + util.escapeXpathString(path) + ']');
 
             return parentNode;
         }
@@ -812,6 +812,14 @@ module.exports = ext.register("ext/tree/tree", {
     unfavorAllPaths: function() {
         this.favTrees = [];
         this.refresh();
+    },
+    isRootPath:function(path){
+        for (var i in this.favTrees) {
+            if (this.favTrees[i] == path) {
+                return true;
+            }
+        }
+        return false;
     },
     destroy: function() {
         commands.removeCommandByName("opentreepanel");
