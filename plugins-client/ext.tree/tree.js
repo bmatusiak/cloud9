@@ -323,29 +323,7 @@ module.exports = ext.register("ext/tree/tree", {
                 });
             }
         }));
-        /*globals mnuCtxTree itemCtxTreeFavPathDiv itemCtxTreeRmFavPath itemCtxTreeFavPath */
-        mnuCtxTree.ondisplay = function(e){
-            var ts = _self.treeSelection;
-            itemCtxTreeFavPathDiv.setAttribute("visible","false");
-            itemCtxTreeRmFavPath.setAttribute("visible","false");
-            itemCtxTreeFavPath.setAttribute("visible","false");
-            
-            var isFolder = (ts.type == "folder" && ts.path !== ide.davPrefix)
-            var isRootFolder = _self.isRootPath(ts.path);
-            
-            if(isFolder && !isRootFolder){
-                itemCtxTreeFavPathDiv.setAttribute("visible","true");
-                itemCtxTreeFavPath.setAttribute("visible","true");
-                itemCtxTreeRmFavPath.setAttribute("visible","false");
-            }
-            
-            if(isFolder && isRootFolder){
-                itemCtxTreeFavPathDiv.setAttribute("visible","true");
-                itemCtxTreeFavPath.setAttribute("visible","false");
-                itemCtxTreeRmFavPath.setAttribute("visible","true");
-            }
-        }
-
+        
         trFiles.filterUnique = function(pNode, nodes) {
             var filtered = [];
             for (var i = 0, l = nodes.length; i < l; i++) {
@@ -396,6 +374,26 @@ module.exports = ext.register("ext/tree/tree", {
                 // user refreshes the tree
                 _self.treeSelection.path = nodePath;
                 _self.treeSelection.type = nodeType;
+                
+                var ts = _self.treeSelection;
+                itemCtxTreeFavPathDiv.setAttribute("visible","false");
+                itemCtxTreeRmFavPath.setAttribute("visible","false");
+                itemCtxTreeFavPath.setAttribute("visible","false");
+                
+                var isFolder = (ts.type == "folder" && ts.path !== ide.davPrefix)
+                var isRootFolder = _self.isRootPath(ts.path);
+                
+                if(isFolder && !isRootFolder){
+                    itemCtxTreeFavPathDiv.setAttribute("visible","true");
+                    itemCtxTreeFavPath.setAttribute("visible","true");
+                    itemCtxTreeRmFavPath.setAttribute("visible","false");
+                }
+                
+                if(isFolder && isRootFolder){
+                    itemCtxTreeFavPathDiv.setAttribute("visible","true");
+                    itemCtxTreeFavPath.setAttribute("visible","false");
+                    itemCtxTreeRmFavPath.setAttribute("visible","true");
+                }
             }
         });
 
