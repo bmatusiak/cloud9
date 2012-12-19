@@ -329,7 +329,7 @@ define(function(require, exports, module) {
                 itemCtxTreeRmFavPath.setAttribute("visible","false");
                 itemCtxTreeFavPath.setAttribute("visible","false");
                 
-                var isFolder = (_self.treeSelection.type == "folder")
+                var isFolder = (_self.treeSelection.type == "folder" && _self.treeSelection.path !== ide.davPrefix)
                 var isRootFolder = false;
                 for (var i in _self.favTrees) {
                     if (_self.favTrees[i] == _self.treeSelection.path){
