@@ -1,7 +1,16 @@
 "use strict";
-
-var fs = require("fs");
 var argv = require('optimist').argv;
+if(argv["?"]){
+console.log("-p [Number] Port Number");
+console.log("-w [Dir] Full Path within connected host");
+console.log("-b [Number] Debugger Port");
+console.log("-h [SSH Host] SSH-VFS connection to ex. user@domain.net  blank will be local VFS");
+console.log("-a [Number] run app port on host");
+console.log("-u [URL] url for clicking in IDE");
+
+process.exit(0);
+}
+var fs = require("fs");
 var path = require("path");
 
 var clientExtensions = {};
