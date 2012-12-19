@@ -23,6 +23,8 @@ var port = argv.p || process.env.PORT || 3131;
 var host = argv.l || process.env.IP || "localhost";
 var debugPort = argv.b || process.env.DEBUG_PORT || 5858;
 var sshHost = argv.h;
+var URL = argv.u;
+var wsPort = argv.a;
 
 var config = [
     {
@@ -59,7 +61,8 @@ var config = [
         workspaceId: "Cloud9",
         userDir: null, // is this always there??
         unixId: null,
-        host: host
+        host: host,
+	port: wsPort
     }, {
         packagePath: "./cloud9.core",
         debug: false,
@@ -179,7 +182,8 @@ var config = [
     "./cloud9.run.shell",
     {
         packagePath: "./cloud9.run.node",
-        listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host."
+        listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host.",
+	url:URL
     },
     {
         packagePath: "./cloud9.run.node-debug",

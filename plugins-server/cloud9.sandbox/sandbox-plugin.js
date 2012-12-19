@@ -22,6 +22,7 @@ module.exports = function(options, imports, register) {
                 callback(null, options.unixId || null);
             },
             getPort: function(callback) {
+		if(options.port) return callback(null,options.port)
                 // grab a free port
                 netutil.findFreePort(20000, 64000, options.host, function (err, port) {
                     callback(err, port);
