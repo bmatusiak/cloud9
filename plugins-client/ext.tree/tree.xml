@@ -105,15 +105,16 @@
             <a:item match="[file|folder|project]" visible="{!require('core/ide').readonly}" onclick="
                 require('ext/filesystem/filesystem').createFolder();
             ">New Folder</a:item>
-            <a:divider visible="{!require('core/ide').readonly}"/>
-            <a:item id="itemCtxTreeFavPath" match="[folder[not(@root)]]" visible="{!require('core/ide').readonly}" 
+            <a:divider id="itemCtxTreeFavPathDiv" visible="false"/>
+            <a:item id="itemCtxTreeFavPath" visible="false"
               onclick="
                 require('ext/tree/tree').favorPath(require('ext/tree/tree').treeSelection);
             ">Add Favorite Path</a:item>
-            <a:item id="itemCtxTreeFavPath" match="[folder[@root]]" visible="{!require('core/ide').readonly}" 
+            <a:item id="itemCtxTreeRmFavPath" visible="false"
               onclick="
                 require('ext/tree/tree').unfavorPath(require('ext/tree/tree').treeSelection);
             ">Remove Favorite Path</a:item>
+            
         </a:menu>
     </a:window>
 </a:application>
