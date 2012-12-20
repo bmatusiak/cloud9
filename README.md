@@ -55,7 +55,13 @@ Install:
     cd cloud9
     sm install
     
-
+Build-Client Dependencies for first time:
+    
+    npm run-script build-packed
+    
+    # or 
+    
+    node scripts/build-packed.js
 
 The above install steps create a `cloud9` directory in your current directory. Just `cd` into it
 and run `bin/cloud9.sh` to start:
