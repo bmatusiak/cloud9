@@ -33,7 +33,20 @@ var host = argv.l || process.env.IP || "localhost";
 var debugPort = argv.b || process.env.DEBUG_PORT || 5858;
 var sshHost = argv.h;
 var URL = argv.u;
-var wsPort = argv.a;
+var wsPort = argv.a;//workspace port!! not websocket port :P
+
+if(argv.h && argv.h.indexOf("@") > -1){
+    var uname = argv.h.split("@")[0];
+    var domain = argv.h.split("@")[1];
+    if(!argv.w){
+      projectDir = "/home/"+uname;
+    }
+    if(!argv.u){
+        var sdo = domain.split(".");
+        sdo.shift();
+        URL = "http://"+uname+"."+sdo.join(".");
+    }
+}
 
 var config = [
     {
@@ -192,12 +205,13 @@ var config = [
     {
         packagePath: "./cloud9.run.node",
         listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host.",
-	url:URL
+	    url:URL
     },
     {
         packagePath: "./cloud9.run.node-debug",
         listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host.",
-        debugPort: debugPort
+        debugPort: debugPort,
+        url:URL
     },
     "./cloud9.run.npm",
     "./cloud9.run.npmnode",
