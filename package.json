@@ -32,7 +32,8 @@
         "smith": "0.1.9",
         "smith.io": "0.0.36",
         "vfs-architect": "git://github.com/bmatusiak/vfs-architect.git#89ff5efbecb0365397823fbc459c38102c1c26f6",
-        "jsDAV": "0.2.4"
+        "jsDAV": "0.2.4",
+        "pty.js":"0.1.2"
     },
 
     "devDependencies": {
