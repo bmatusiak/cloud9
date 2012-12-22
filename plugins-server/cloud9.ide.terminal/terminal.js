@@ -9,8 +9,9 @@ var pty = require("pty.js");
 var name = "terminal";
 var ProcessManager;
 var EventBus;
-
+var PluginOptions = {};
 module.exports = function setup(options, imports, register) {
+    PluginOptions = options;
     ProcessManager = imports["process-manager"];
     EventBus = imports.eventbus;
     imports.ide.register(name, TerminalPlugin, register);
@@ -73,16 +74,25 @@ util.inherits(TerminalPlugin, Plugin);
                 return false;
         }
 
-        console.log(message);
         //doo stuff
         var term;
         
         if(cmd == "ttyCreate"){
-            term = pty.spawn("ssh", ["bmatusiak@dev.shcdn.biz"], {
-                name: 'xterm-color',
-                cols: 80,
-                rows: 24
-            });
+            if(PluginOptions.isSSH){
+                term = pty.spawn("ssh", [PluginOptions.host], {
+                    name: 'xterm-color',
+                    cols: 80,
+                    rows: 24
+                });
+            }else{
+                term = pty.spawn("bash", [], {
+                    name: 'xterm-color',
+                    cols: 80,
+                    rows: 24,
+                    cwd: PluginOptions.cwd || process.env.HOME,
+                    env: process.env
+                });
+            }
             
             _self.ptys[term.fd] = term;
             
@@ -105,9 +115,32 @@ util.inherits(TerminalPlugin, Plugin);
                 term = _self.ptys[msg.fd];
                 
                 term.write(msg.data);
+            }else{
+                client.send({
+                    command:"ttyGone",
+                    fd:msg.fd
+                });
             }
         }
-
+        if(cmd == "ttyKill"){
+            if(_self.ptys[msg.fd]){
+                term = _self.ptys[msg.fd];
+                term.destroy();
+            }
+        }
+        if(cmd == "ttyResize"){
+            if(_self.ptys[msg.fd]){
+                term = _self.ptys[msg.fd];
+                term.resize(msg.cols, msg.rows);
+                client.send({
+                    command:"ttyResize",
+                    fd:msg.fd
+                });
+            }
+        }
+        if(cmd == "ttyPing"){
+            
+        }
         return true;
     };
 

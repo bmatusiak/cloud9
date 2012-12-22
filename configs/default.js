@@ -247,14 +247,17 @@ var config = [
     },
     "./cloud9.ide.shell",
     "./cloud9.ide.state",
-    "./cloud9.ide.watcher",
-    "./cloud9.ide.terminal"
+    "./cloud9.ide.watcher"
 ];
 if (!sshHost) {
     config.push({
         packagePath: "vfs-architect/local",
         root: "/"
-    })
+    },{
+        packagePath: "./cloud9.ide.terminal",
+        isSSL : false,
+        cwd:projectDir
+    });
 }
 else {
     config.push({
@@ -262,7 +265,11 @@ else {
         host: sshHost,
         root: "/",
         nodePath: "/usr/local/bin/node"
-    })
+    },{
+        packagePath: "./cloud9.ide.terminal",
+        isSSH : true,
+        host  : sshHost
+    });
 }
 
 module.exports = config;
