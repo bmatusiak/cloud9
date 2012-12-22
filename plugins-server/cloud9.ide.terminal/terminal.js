@@ -131,7 +131,9 @@ util.inherits(TerminalPlugin, Plugin);
         if(cmd == "ttyResize"){
             if(_self.ptys[msg.fd]){
                 term = _self.ptys[msg.fd];
-                term.resize(msg.cols, msg.rows);
+                try{
+                    term.resize(msg.cols, msg.rows);
+                }catch(e){}
                 client.send({
                     command:"ttyResize",
                     fd:msg.fd
