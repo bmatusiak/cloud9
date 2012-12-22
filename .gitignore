@@ -42,5 +42,5 @@ node_modules/
 deps/ace/
 plugins-server/fixtures/
 npm-debug.log
-plugins-client/lib.apf/www/apf-packaged/apf_debug.js
+plugins-client/lib.apf/www/apf-packaged/
 .sessions/

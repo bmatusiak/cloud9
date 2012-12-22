@@ -32,7 +32,7 @@ var TerminalPlugin = function(ide, workspace) {
         EDITOR: "",
         GIT_EDITOR: ""
     };
-
+    this.ptys= {};
     this.processCount = 0;
 };
 
@@ -48,15 +48,10 @@ util.inherits(TerminalPlugin, Plugin);
     };
     
     this.command = function (user, message, client) {
-        var self = this;
-        function sendCmd(cmd,data){
-            client.send({
-                command: cmd,
-                message: data
-            });
-        }
+        var _self = this;
+        var msg = message;
         var cmd = message.command ? message.command : "";
-        /*
+        /* sendable commands
             "ttyCallback"
             "ttyData"
             "ttyGone"
@@ -80,19 +75,37 @@ util.inherits(TerminalPlugin, Plugin);
 
         console.log(message);
         //doo stuff
+        var term;
         
         if(cmd == "ttyCreate"){
-            var term = pty.spawn("ssh", ["bmatusiak@dev.shcdn.biz"], {
+            term = pty.spawn("ssh", ["bmatusiak@dev.shcdn.biz"], {
                 name: 'xterm-color',
                 cols: 80,
                 rows: 24
             });
             
-            sendCmd("ttyCallback",{reqId:message.reqId, fd:term.fd})
+            _self.ptys[term.fd] = term;
+            
+            client.send({
+                    command:"ttyCallback",
+                    fd:term.fd,
+                    reqId:message.reqId
+                });
             
             term.on("data", function(data) {
-              sendCmd("ttyData",{fd:term.fd,data:data})
+                client.send({
+                    command:"ttyData",
+                    fd:term.fd,
+                    data:data
+                });
             });
+        }
+        if(cmd == "ttyData"){
+            if(_self.ptys[msg.fd]){
+                term = _self.ptys[msg.fd];
+                
+                term.write(msg.data);
+            }
         }
 
         return true;
