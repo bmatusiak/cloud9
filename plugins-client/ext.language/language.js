@@ -19,7 +19,7 @@ var useUIWorker = window.location && /[?&]noworker=1/.test(window.location.searc
 var complete = require("ext/language/complete");
 var marker = require("ext/language/marker");
 var refactor = require("ext/language/refactor");
-var outline = require("ext/language/outline");
+var outline2 = require("ext/language/outline2");
 var markup = require("text!ext/language/language.xml");
 var skin = require("text!ext/language/skin.xml");
 var css = require("text!ext/language/language.css");
@@ -56,7 +56,7 @@ module.exports = ext.register("ext/language/language", {
         ide.addEventListener("extload", function() {
             var Worker = useUIWorker ? UIWorkerClient : WorkerClient;
             var worker = _self.worker = new Worker(["treehugger", "ext", "ace", "c9"], "ext/language/worker", "LanguageWorker");
-            complete.setWorker(worker);
+            outline2.setWorker(worker);
 
             ide.addEventListener("closefile", function(e){
                 var path = e.page && e.page.id;
@@ -85,11 +85,16 @@ module.exports = ext.register("ext/language/language", {
                 ]);
             });
 
+            ide.addEventListener("tab.afterswitch", function (e) {
+                ext.initExtension(_self);
+                _self.setPath();
+                worker.emit("outline", { data : { ignoreFilter: false } });
+            });
+
             // Language features
             marker.hook(_self, worker);
             complete.hook(_self, worker);
             refactor.hook(_self, worker);
-            outline.hook(_self, worker);
             keyhandler.hook(_self, worker);
             jumptodef.hook(_self, worker);
 
