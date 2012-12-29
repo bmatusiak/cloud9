@@ -48,6 +48,8 @@ if(argv.h && argv.h.indexOf("@") > -1){
     }
 }
 
+var useAuth = argv.username && argv.password;
+
 var config = [
     {
         packagePath: "connect-architect/connect",
@@ -247,7 +249,7 @@ var config = [
     },
     "./cloud9.ide.shell",
     "./cloud9.ide.state",
-    "./cloud9.ide.watcher"
+    "./cloud9.ide.watcher",
 ];
 if (!sshHost) {
     config.push({
@@ -269,6 +271,14 @@ else {
         packagePath: "./cloud9.ide.terminal",
         isSSH : true,
         host  : sshHost
+    });
+}
+
+if (useAuth) {
+    config.push({
+        packagePath: "./cloud9.connect.basic-auth",
+        username: argv.username,
+        password: argv.password
     });
 }
 
