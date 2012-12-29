@@ -32,15 +32,8 @@ plugins/cloud9.client.treehugger/node_modules/
 plugins/cloud9.client.v8debug/node_modules/
 plugins/cloud9.static/node_modules/
 plugins-server/cloud9.fs/node_modules/
-plugins-client/lib.packed/www/
-plugins-client/lib.ace/www/worker/
-plugins-client/lib.ace/www/mode/
-plugins-client/cloud9.core/www/js/
-plugins-client/ext.jsinfer
-plugins-client/ext.jsonalyzer
 node_modules/
 deps/ace/
 plugins-server/fixtures/
 npm-debug.log
-plugins-client/lib.apf/www/apf-packaged/
 .sessions/
