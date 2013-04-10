@@ -1,7 +1,18 @@
 <a:application xmlns:a="http://ajax.org/2005/aml">
-    <a:img id="imgEditor"
-      flex              = "1"
-      anchors           = "0 0 0 0"
-      visible           = "false"
-    />
+    
+    <a:toolbar align="top" height="25">
+        <a:bar style="border-bottom:2px">
+            <a:button
+              onclick  = "imgEditor.$self.Rotate90CCW()">Rotate90CCW</a:button>
+            <a:button
+              onclick  = "imgEditor.$self.Rotate90CW()">Rotate90CW</a:button>
+              <a:button
+              onclick  = "imgEditor.$self.save(this)">Save</a:button>
+        </a:bar>
+    </a:toolbar>
+    <a:bar id="imgEditor" flex="1" anchors="35 0 0 0" visible="false" style="overflow:scroll;">
+            <img />
+            <canvas style="margin:0 auto;"></canvas>
+    </a:bar>
+    
 </a:application>
