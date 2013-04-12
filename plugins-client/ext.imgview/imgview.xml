@@ -1,11 +1,9 @@
 <a:application xmlns:a="http://ajax.org/2005/aml">
-    <a:toolbar align="top" height="25">
-        <a:bar style="border-bottom:2px">
-            <a:button
-              onclick  = "imgEditor.$self.Rotate90CCW()">Rotate90CCW</a:button>
-            <a:button
-              onclick  = "imgEditor.$self.Rotate90CW()">Rotate90CW</a:button>
-        </a:bar>
+    <a:toolbar>
+        <a:menubar>
+            <a:button onclick  = "imgEditor.$self.Rotate90CCW()">Rotate90CCW</a:button>
+            <a:button onclick  = "imgEditor.$self.Rotate90CW()">Rotate90CW</a:button>
+        </a:menubar>
     </a:toolbar>
     <a:bar id="imgEditor" flex="1" anchors="35 0 0 0" visible="false" style="overflow:scroll;">
             <img style="margin:0 auto;"/>
