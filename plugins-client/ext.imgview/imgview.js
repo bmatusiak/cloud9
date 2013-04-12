@@ -13,6 +13,7 @@ var ext = require("core/ext");
 var fs = require("ext/filesystem/filesystem");
 var markup = require("text!ext/imgview/imgview.xml");
 var editors = require("ext/editors/editors");
+var Pixastic = require("ext/imgview/pixastic/pixastic");
 
 module.exports = ext.register("ext/imgview/imgview", {
     name    : "Image Viewer",
@@ -46,16 +47,14 @@ module.exports = ext.register("ext/imgview/imgview", {
         
         this.loadCanvas(doc);
         
-        //P = new Pixastic(ctx);
-        
         if (!doc.isInited) {
             doc.isInited = true;
             doc.dispatchEvent("init");
         }
     },
     loadCanvas:function(doc){
-        var img = this.img = imgEditor.$ext.getElementsByTagName("img")[0];
-        var canvas = this.canvas = imgEditor.$ext.getElementsByTagName("canvas")[0];
+        var img = this.img = window.imgEditor.$ext.getElementsByTagName("img")[0];
+        var canvas = this.canvas = window.imgEditor.$ext.getElementsByTagName("canvas")[0];
         var ctx = this.ctx = canvas.getContext("2d");
         
         if(doc){
@@ -66,7 +65,7 @@ module.exports = ext.register("ext/imgview/imgview", {
                 canvas.style.display = "block";
                 img.style.display = "none";
                 ctx.drawImage(img, 0, 0);
-            }
+            };
         }else{
             canvas.width = img.width;
             canvas.height = img.height;
@@ -79,7 +78,7 @@ module.exports = ext.register("ext/imgview/imgview", {
     hook : function() {},
 
     init : function(amlPage) {
-        var editor = imgEditor;
+        var editor = window.imgEditor;
         var __self = this;
         
         var saveCanvas=function(e) {
@@ -149,20 +148,6 @@ module.exports = ext.register("ext/imgview/imgview", {
         if(!this.imgEditor.focus)
             this.imgEditor.focus = function(){ return false;};
     },
-    isEditing: false,
-    save : function(button) {
-        
-        if(button.caption == "Edit"){
-            this.loadCanvas();
-            button.setCaption("Save");
-        }else{
-            this.img.onload = function(){};
-            this.canvas.style.display = "none";
-            this.img.style.display = "block";
-            this.img.src = this.canvas.toDataURL();
-            button.setCaption("Edit");
-        };
-    },
     Rotate90CW : function() {
             //copyCanvas
         var newcanvas = document.createElement("canvas");
@@ -197,6 +182,14 @@ module.exports = ext.register("ext/imgview/imgview", {
         ctx.drawImage(newcanvas, 0, 0);
         ctx.restore();
         return true;
+    },
+    pixastic: function() {
+        var _self = this;
+        
+        var P = new Pixastic(_self.canvas.getContext("2d"));
+        P[arguments[0]](arguments[1] || {} ).done(function() {
+            //_self.canvas.style.display = "block";
+        });
     }
 });
 
