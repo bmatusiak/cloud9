@@ -81,6 +81,9 @@ module.exports = ext.register("ext/imgview/imgview", {
     init : function(amlPage) {
         var editor = imgEditor;
         var __self = this;
+        ide.addEventListener("socketMessage",function(e) {
+            //console.log(e);
+        });
         ide.addEventListener("beforefilesave", function(e) {
             
             var path = e.node && e.node.getAttribute("path");
