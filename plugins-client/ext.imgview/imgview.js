@@ -81,10 +81,8 @@ module.exports = ext.register("ext/imgview/imgview", {
     init : function(amlPage) {
         var editor = imgEditor;
         var __self = this;
-        ide.addEventListener("socketMessage",function(e) {
-            //console.log(e);
-        });
-        ide.addEventListener("beforefilesave", function(e) {
+        
+        var saveCanvas=function(e) {
             
             var path = e.node && e.node.getAttribute("path");
             if (!path)
@@ -95,17 +93,6 @@ module.exports = ext.register("ext/imgview/imgview", {
                 var dataURL = __self.canvas.toDataURL();
                 
                 var binary = atob(dataURL.split(',')[1]);
-                // Create 8-bit unsigned array
-                var array = [];
-                for(var i = 0; i < binary.length; i++) {
-                    array.push(binary.charCodeAt(i));
-                }
-                // Return our Blob object
-                //var blob = new Blob([new Uint8Array(array)], {type: 'image/png'});
-                // don't save images for now.
-                /*fs.saveBinary(path,binary,function(data, state, extra){
-                    console.log(data, state, extra);
-                })*/
                 
                 if (!fs.webdav)
                 return false;
@@ -121,7 +108,37 @@ module.exports = ext.register("ext/imgview/imgview", {
                 
                 return false;
             }
-        });
+        };
+        ide.addEventListener("beforefilesave",saveCanvas );
+        ide.addEventListener("afterfilesave",function(e){
+            console.log("afterfilesave");
+            var path = e.node && e.node.getAttribute("path");
+            if (!path)
+                return;
+            
+            var newPath = e.doc && e.doc.getNode && e.doc.getNode().getAttribute("path");
+                
+            if (editor.value == e.oldpath && newPath !== e.oldpath){
+                
+                var dataURL = __self.canvas.toDataURL();
+                
+                var binary = atob(dataURL.split(',')[1]);
+                
+                if (!fs.webdav)
+                return false;
+                
+                //sPath, sContent, bLock, oBinary, callback
+                fs.webdav.write(newPath, binary, null, {filename:path.replace(ide.davPrefix,"")}, function(data, state, extra) {
+                    if ((state == apf.ERROR && extra.status == 400 && extra.retries < 3) || state == apf.TIMEOUT)
+                        return extra.tpModule.retry(extra.id);
+        
+                    console.log(data, state, extra);
+                    return false;
+                });
+                
+                return false;
+            }
+        } );
 
         //amlPage.appendChild(editor);
         editor.show();

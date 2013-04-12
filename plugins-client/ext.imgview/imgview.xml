@@ -1,5 +1,4 @@
 <a:application xmlns:a="http://ajax.org/2005/aml">
-    
     <a:toolbar align="top" height="25">
         <a:bar style="border-bottom:2px">
             <a:button
@@ -12,5 +11,4 @@
             <img style="margin:0 auto;"/>
             <canvas style="margin:0 auto;"></canvas>
     </a:bar>
-    
 </a:application>
