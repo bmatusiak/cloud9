@@ -41,7 +41,9 @@ module.exports = ext.register("ext/imgview/imgview", {
     deps    : [editors],
 
     nodes : [],
-
+    
+    loadedFiles:{},
+    
     setDocument : function(doc, actiontracker){
         doc.session = doc.getNode().getAttribute("path");
         
