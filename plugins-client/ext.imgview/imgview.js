@@ -57,7 +57,8 @@ module.exports = ext.register("ext/imgview/imgview", {
     loadCanvas:function(doc){
         var img = this.img = window.imgEditor.$ext.getElementsByTagName("img")[0];
         var canvas = this.canvas = window.imgEditor.$ext.getElementsByTagName("canvas")[0];
-        var ctx = this.ctx = canvas.getContext("2d");
+        
+        var ctx = canvas.getContext("2d");
         
         if(doc){
             img.src =  apf.escapeXML(doc.session);
