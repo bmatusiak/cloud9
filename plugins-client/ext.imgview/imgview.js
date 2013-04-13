@@ -81,6 +81,21 @@ module.exports = ext.register("ext/imgview/imgview", {
         var editor = window.imgEditor;
         var __self = this;
         
+        function saveCanvas(path,dataURL){
+            var binary = atob(dataURL.split(',')[1]);
+                
+            if (!fs.webdav)
+            return false;
+            
+            //sPath, sContent, bLock, oBinary, callback
+            fs.webdav.write(path, binary, null, {filename:path.replace(ide.davPrefix,"")}, function(data, state, extra) {
+                if ((state == apf.ERROR && extra.status == 400 && extra.retries < 3) || state == apf.TIMEOUT)
+                    return extra.tpModule.retry(extra.id);
+    
+                console.log(data, state, extra);
+                return false;
+            });
+        }
         var saveCanvas=function(e) {
             
             var path = e.node && e.node.getAttribute("path");
