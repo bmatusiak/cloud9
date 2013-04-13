@@ -96,7 +96,8 @@ module.exports = ext.register("ext/imgview/imgview", {
                 return false;
             });
         }
-        var saveCanvas=function(e) {
+        
+        ide.addEventListener("beforefilesave",function(e) {
             
             var path = e.node && e.node.getAttribute("path");
             if (!path)
@@ -105,25 +106,11 @@ module.exports = ext.register("ext/imgview/imgview", {
             if (editor.value == path){
             
                 var dataURL = __self.canvas.toDataURL();
-                
-                var binary = atob(dataURL.split(',')[1]);
-                
-                if (!fs.webdav)
-                return false;
-                
-                //sPath, sContent, bLock, oBinary, callback
-                fs.webdav.write(path, binary, null, {filename:path.replace(ide.davPrefix,"")}, function(data, state, extra) {
-                    if ((state == apf.ERROR && extra.status == 400 && extra.retries < 3) || state == apf.TIMEOUT)
-                        return extra.tpModule.retry(extra.id);
-        
-                    console.log(data, state, extra);
-                    return false;
-                });
+                saveCanvas(path,dataURL)
                 
                 return false;
             }
-        };
-        ide.addEventListener("beforefilesave",saveCanvas );
+        } );
         ide.addEventListener("afterfilesave",function(e){
             console.log("afterfilesave");
             var path = e.node && e.node.getAttribute("path");
@@ -136,19 +123,7 @@ module.exports = ext.register("ext/imgview/imgview", {
                 
                 var dataURL = __self.canvas.toDataURL();
                 
-                var binary = atob(dataURL.split(',')[1]);
-                
-                if (!fs.webdav)
-                return false;
-                
-                //sPath, sContent, bLock, oBinary, callback
-                fs.webdav.write(newPath, binary, null, {filename:path.replace(ide.davPrefix,"")}, function(data, state, extra) {
-                    if ((state == apf.ERROR && extra.status == 400 && extra.retries < 3) || state == apf.TIMEOUT)
-                        return extra.tpModule.retry(extra.id);
-        
-                    console.log(data, state, extra);
-                    return false;
-                });
+                saveCanvas(newPath,dataURL);
                 
                 return false;
             }
