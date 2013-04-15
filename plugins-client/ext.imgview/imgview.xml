@@ -1,14 +1,46 @@
 <a:application xmlns:a="http://ajax.org/2005/aml">
-    <a:toolbar>
-        <a:menubar>
+    <style>
+    <![CDATA[
+        .imgToolbar {
+            /* toolbar namespace */
+        }
+        .imgToolbar .menubar{
+            background:#423f3f;
+        }
+        .imgToolbar .toolbarbuttonOver {
+            background : #2d2d2d;
+        }
+        .imgToolbar .toolbarbuttonDown {
+            background : #4d4d4d;
+        }
+        .imgToolbar .devider {
+            width:10px; 
+            line-height: 25px; 
+            text-align:center;
+            font-size: 20px;
+        }
+    ]]>
+    </style>
+    
+    <!-- <a:menu id="mnuCtxHidden" ondisplay="this.hide()"></a:menu> -->
+    
+    <a:toolbar height="40" class="imgToolbar"  contextmenu="mnuCtxHidden">
+        <a:hbox flex="1">
+            <a:button onclick  = "imgEditor.$self.toolActions(this,'toolSelectRect','tools')" >Select Rectangle</a:button>
+            <span style="width:5px;"> </span>
+            <a:button onclick  = "imgEditor.$self.toolActions(this,'toolSelectWond','tools')">Select Wand</a:button>
+            <span class="devider" > | </span>
             <a:button onclick  = "imgEditor.$self.Rotate90CCW()">Rotate90CCW</a:button>
+            <span style="width:5px;"> </span>
             <a:button onclick  = "imgEditor.$self.Rotate90CW()">Rotate90CW</a:button>
+            <span style="width:5px;"> </span>
             <a:button onclick  = "imgEditor.$self.pixastic('fliph')">FlipH</a:button>
+            <span style="width:5px;"> </span>
             <a:button onclick  = "imgEditor.$self.pixastic('flipv')">FlipV</a:button>
-            
-        </a:menubar>
+        </a:hbox>
     </a:toolbar>
-    <a:bar id="imgEditor" flex="1" anchors="35 0 0 0" visible="false" style="overflow:scroll;">
+    
+    <a:bar id="imgEditor" flex="1" anchors="35 0 0 0" visible="false" style="overflow:scroll;" contextmenu="mnuCtxHidden">
             <img style="margin:0 auto;"/>
             <canvas style="margin:0 auto;"></canvas>
     </a:bar>

@@ -47,42 +47,122 @@ module.exports = ext.register("ext/imgview/imgview", {
     setDocument : function(doc, actiontracker){
         doc.session = doc.getNode().getAttribute("path");
         
-        this.loadCanvas(doc);
+        var path = apf.escapeXML(doc.session);
+        this.loadCanvas(path);
         
         if (!doc.isInited) {
             doc.isInited = true;
             doc.dispatchEvent("init");
         }
     },
-    loadCanvas:function(doc){
-        var img = this.img = window.imgEditor.$ext.getElementsByTagName("img")[0];
-        var canvas = this.canvas = window.imgEditor.$ext.getElementsByTagName("canvas")[0];
+    loadCanvas:function(path){
+        var _self = this;
+        var ctx = this.canvas.getContext("2d");
         
-        var ctx = canvas.getContext("2d");
-        
-        if(doc){
-            img.src =  apf.escapeXML(doc.session);
-            img.onload = function(){
-                canvas.width = img.width;
-                canvas.height = img.height;
-                canvas.style.display = "block";
-                img.style.display = "none";
-                ctx.drawImage(img, 0, 0);
+        if(path && !_self.loadedFiles[path]){
+            _self.img.onload = function(){
+                _self.canvas.width = _self.img.width;
+                _self.canvas.height = _self.img.height;
+                _self.canvas.style.display = "block";
+                _self.img.style.display = "none";
+                ctx.drawImage(_self.img, 0, 0);
+                _self.loadedFiles[path] = _self.canvas.toDataURL();
             };
+            _self.img.src =  path;
         }else{
-            canvas.width = img.width;
-            canvas.height = img.height;
-            canvas.style.display = "block";
-            img.style.display = "none";
-            ctx.drawImage(img, 0, 0);
+            _self.img.onload = function(){
+                _self.canvas.width = _self.img.width;
+                _self.canvas.height = _self.img.height;
+                _self.canvas.style.display = "block";
+                _self.img.style.display = "none";
+                ctx.drawImage(_self.img, 0, 0);
+            };
+            _self.img.src =  _self.loadedFiles[path];
         }
     },
-
-    hook : function() {},
+    currentTool:null,
+    
+    toolActions:function(apfButton,action,group){
+        
+        var __self = this;
+        
+        var selected = apfButton.parentNode.$ext.getElementsByClassName('ui-btn-blue3');
+        if(selected.length)
+        for(var i in selected){
+            var ele = selected[i];
+            __self.cssClass(ele).remove('ui-btn-blue3');
+        }
+        
+        switch( action ){
+            case "toolSelectRect":
+                __self.cssClass(apfButton.$ext).add('ui-btn-blue3');
+                __self.selectedTool = action;
+                break;
+            case "toolSelectWond":
+                __self.cssClass(apfButton.$ext).add('ui-btn-blue3');
+                __self.selectedTool = action;
+                break;
+            default:
+                __self.cssClass(apfButton.$ext).add('ui-btn-blue3');
+                break;
+        }
+    },
+    
+    cssClass: function(el) {
+        return {
+            has: function(name) {
+                return new RegExp('(\\s|^)' + name + '(\\s|$)').test(el.className);
+            },
+            add: function(name) {
+                if (!this.has(name)) {
+                    el.className += (el.className ? ' ' : '') + name;
+                }
+            },
+            remove: function(name) {
+                if (this.has(name)) {
+                    el.className = el.className.replace(new RegExp('(\\s|^)' + name + '(\\s|$)'), ' ').replace(/^\s+|\s+$/g, '');
+                }
+            },
+            toggel: function(name) {
+                if (this.has(name)) {
+                    this.remove(name);
+                }else{
+                    this.add(name);
+                }
+            }
+        };
+    },
+    
+    hook : function() {
+        
+    },
 
     init : function(amlPage) {
         var editor = window.imgEditor;
+        window.imgEditor.$editor = {};
         var __self = this;
+        this.img = window.imgEditor.$ext.getElementsByTagName("img")[0];
+        this.canvas = window.imgEditor.$ext.getElementsByTagName("canvas")[0];
+        
+        var isMoueDown = false;
+        this.canvas.onmousemove=function(e){
+            if(isMoueDown){
+                console.log(e.layerX , e.layerY);
+            }
+        };
+        this.canvas.onmousedown=function(e){
+            isMoueDown = true;
+            console.log(e.layerX , e.layerY);
+            //start selection
+        };
+        window.onmouseup=function(e){
+            
+            if(isMoueDown){
+                console.log(e.layerX , e.layerY);
+            }
+            isMoueDown = false;
+            //stop selection
+        };
         
         function saveCanvas(path,dataURL){
             var binary = atob(dataURL.split(',')[1]);
