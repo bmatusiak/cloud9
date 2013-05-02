@@ -20,8 +20,7 @@ var editors = require("ext/editors/editors");
 var showHideScrollPos;
 
 function $trScroll() {
-    if (this.$scrollTimer)
-        clearTimeout(this.$scrollTimer);
+    if (this.$scrollTimer) clearTimeout(this.$scrollTimer);
 
     showHideScrollPos = trFiles.$ext.scrollTop;
 
@@ -30,50 +29,52 @@ function $trScroll() {
     this.scrollPos = -1;
 
     this.$scrollTimer = setTimeout(function() {
-        var settingsData       = settings.model.data;
+        var settingsData = settings.model.data;
         var settingProjectTree = settingsData.selectSingleNode("auto/projecttree");
-        if (settingProjectTree)
-            apf.xmldb.setAttribute(settingProjectTree, "scrollpos", trFiles.$ext.scrollTop);
+        if (settingProjectTree) apf.xmldb.setAttribute(settingProjectTree, "scrollpos", trFiles.$ext.scrollTop);
     }, 1000);
 }
 
 function $cancelWhenOffline() {
-    if (!ide.onLine && !ide.offlineFileSystemSupport)
-        return false;
+    if (!ide.onLine && !ide.offlineFileSystemSupport) return false;
 }
 
 module.exports = ext.register("ext/tree/tree", {
-    name             : "Workspace Files",
-    dev              : "Cloud9 IDE, Inc.",
-    alone            : true,
-    type             : ext.GENERAL,
-    markup           : markup,
+    name: "Workspace Files",
+    dev: "Cloud9 IDE, Inc.",
+    alone: true,
+    type: ext.GENERAL,
+    markup: markup,
 
-    defaultWidth     : 200,
+    defaultWidth: 200,
 
-    deps             : [fs],
+    deps: [fs],
 
-    expandedNodes    : [],
-    loadedSettings   : 0,
-    expandedList     : {},
-    treeSelection    : { path : null, type : null },
-    loading          : false,
-    changed          : false,
-    animControl      : {},
-    nodes            : [],
-    model            : null,
-    offline          : false,
+    expandedNodes: [],
+    loadedSettings: 0,
+    expandedList: {},
+    favTrees: [],
+    treeSelection: {
+        path: null,
+        type: null
+    },
+    loading: false,
+    changed: false,
+    animControl: {},
+    nodes: [],
+    model: null,
+    offline: false,
 
-    "default"        : true,
+    "default": true,
 
-    hook : function(){
+    hook: function() {
         var _self = this;
 
         this.markupInsertionPoint = colLeft;
 
         // Register this panel on the left-side panels
         panels.register(this, {
-            position : 1000,
+            position: 1000,
             caption: "Workspace Files",
             "class": "project_files",
             command: "opentreepanel"
@@ -82,8 +83,11 @@ module.exports = ext.register("ext/tree/tree", {
         commands.addCommand({
             name: "opentreepanel",
             hint: "show the open settings panel",
-            bindKey: {mac: "Command-U", win: "Ctrl-U"},
-            exec: function () {
+            bindKey: {
+                mac: "Command-U",
+                win: "Ctrl-U"
+            },
+            exec: function() {
                 _self.show();
             }
         });
@@ -95,25 +99,43 @@ module.exports = ext.register("ext/tree/tree", {
         ide.addEventListener("init.ext/filesystem/filesystem", function(e) {
             _self.model = e.ext.model;
 
+            _self.model.load(_self.createModel());
+            _self.model.setAttribute("whitespace", false);
+
             // loadedSettings is set after "settings.load" is dispatched.
             // Thus if we have our model setup and we have the cached expanded
             // folders, then we can load the project tree
-            if (_self.loadedSettings > 0 && _self.inited)
-                _self.onReady();
+            if (_self.loadedSettings > 0 && _self.inited) _self.onReady();
         });
 
-        ide.addEventListener("settings.load", function(e){
+        ide.addEventListener("settings.load", function(e) {
             var model = e.model;
             (davProject.realWebdav || davProject).setAttribute("showhidden",
-                apf.isTrue(model.queryValue('auto/projecttree/@showhidden')));
+            apf.isTrue(model.queryValue('auto/projecttree/@showhidden')));
 
             _self.scrollPos = model.queryValue('auto/projecttree/@scrollpos');
+
+            var favTreesStore = model.queryValue("auto/favTreesStore");
+            if (favTreesStore) {
+                try {
+                    _self.favTrees = JSON.parse(favTreesStore);
+                }
+                catch (ex) {
+                    _self.favTrees = [];
+                }
+            }
+            else {
+                _self.favTrees = [];
+            }
+            //console.log("loaded fav trees", _self.favTrees);
+            fs.model.load(_self.createModel());
 
             // auto/projecttree contains the saved expanded nodes
             var strSettings = model.queryValue("auto/projecttree");
             if (strSettings) {
                 try {
                     _self.expandedNodes = JSON.parse(strSettings);
+                    //console.log("loaded expanded nodes", _self.expandedNodes);
                 }
                 catch (ex) {
                     _self.expandedNodes = [ide.davPrefix];
@@ -130,19 +152,16 @@ module.exports = ext.register("ext/tree/tree", {
 
                 // Please see note above about waiting for both the model and
                 // the settings to be loaded before loading the project tree
-                if (_self.model && _self.inited)
-                    _self.onReady();
+                if (_self.model && _self.inited) _self.onReady();
             }
             else {
                 _self.loadedSettings = 2;
-                if (_self.model && _self.inited)
-                    _self.onReady();
+                if (_self.model && _self.inited) _self.onReady();
             }
         });
 
-        ide.addEventListener("settings.save", function(e){
-            if (!_self.changed)
-                return;
+        ide.addEventListener("settings.save", function(e) {
+            if (!_self.changed) return;
 
             var expandedNodes = apf.createNodeFromXpath(e.model.data, "auto/projecttree/text()");
             _self.expandedNodes = [];
@@ -154,34 +173,41 @@ module.exports = ext.register("ext/tree/tree", {
             // settings node
             for (id in _self.expandedList) {
                 path = _self.expandedList[id].getAttribute("path");
-                if (!path)
-                    delete _self.expandedList[id];
-                else
-                    lut[path] = true;
+                if (!path) delete _self.expandedList[id];
+                else lut[path] = true;
             }
 
             // This checks that each expanded folder has a root that's already
             // been saved
             var splitPrefix = ide.davPrefix.split("/");
-            splitPrefix.pop();
+
+            //splitPrefix.pop();
             var rootPrefixNodes = splitPrefix.length;
             var rootPrefix = splitPrefix.join("/");
             var cc, parts;
             for (path in lut) {
                 parts = path.split("/").splice(rootPrefixNodes);
                 cc = rootPrefix + "/" + parts.shift();
-                while(lut[cc]) {
-                    if (!parts.length)
-                        break;
+                while (lut[cc]) {
+                    if (!parts.length) break;
 
                     cc += "/" + parts.shift();
                 }
 
-                if (!parts.length)
-                    _self.expandedNodes.push(path);
+                if (!parts.length) _self.expandedNodes.push(path);
+                else {
+                    for (var i in _self.favTrees) {
+                        if (_self.favTrees[i] == path) _self.expandedNodes.push(path);
+                    }
+                }
             }
 
             expandedNodes.nodeValue = JSON.stringify(_self.expandedNodes);
+
+            var favTreesStore = apf.createNodeFromXpath(e.model.data, "auto/favTreesStore/text()");
+            favTreesStore.nodeValue = JSON.stringify(_self.favTrees);
+            //console.log("saved fav trees", _self.favTrees);
+            //console.log("saved expanded nodes", _self.expandedNodes);
             _self.changed = false;
         });
 
@@ -194,20 +220,18 @@ module.exports = ext.register("ext/tree/tree", {
             var path = "//node()[@path='" + e.path.replace(/'/g, "\\'").replace(/\\/g, "\\\\") + "']";
             var parent = trFiles.getModel().data.selectSingleNode(path)
 
-            if (!parent)
-                return;
+            if (!parent) return;
 
             var nodes = parent.childNodes;
             var files = {};
-            
+
             e.files.forEach(function(f) {
                 files[f.name] = f;
             });
 
             if (!apf.isTrue(settings.model.queryValue("auto/projecttree/@showhidden"))) {
                 for (var file in files) {
-                    if (file.charAt(0) == '.')
-                        delete files[file];
+                    if (file.charAt(0) == '.') delete files[file];
                 }
             }
 
@@ -217,12 +241,10 @@ module.exports = ext.register("ext/tree/tree", {
                 var node = nodes[i],
                     name = node.getAttribute("name");
 
-                if (files && files[name])
-                    delete files[name];
-                else
-                    removed.push(node);
+                if (files && files[name]) delete files[name];
+                else removed.push(node);
             }
-            removed.forEach(function (node) {
+            removed.forEach(function(node) {
                 apf.xmldb.removeNode(node);
             });
             path = parent.getAttribute("path");
@@ -233,13 +255,14 @@ module.exports = ext.register("ext/tree/tree", {
                 xmlNode.setAttribute("type", file.type);
                 xmlNode.setAttribute("name", file.name);
                 xmlNode.setAttribute("path", path + "/" + file.name);
-                
+
                 trFiles.add(xmlNode, parent);
             }
         });
+        //ext.initExtension(_self);
     },
 
-    onReady : function() {
+    onReady: function() {
         var _self = this;
         trFiles.setAttribute("model", this.model);
 
@@ -265,63 +288,59 @@ module.exports = ext.register("ext/tree/tree", {
         }
     },
 
-    init : function() {
+    init: function() {
         var _self = this;
 
         // Set the panel var for the panels extension
         this.panel = winFilesViewer;
         this.nodes.push(winFilesViewer);
 
-        ide.addEventListener("afteroffline", function(){
+        ide.addEventListener("afteroffline", function() {
             trFiles.selectable = false;
             //_self.button.enable();
         })
 
-        ide.addEventListener("afteronline", function(){
+        ide.addEventListener("afteronline", function() {
             trFiles.selectable = true;
         })
 
         // This adds a "Show Hidden Files" item to the settings dropdown
         // from the Project Files header
         mnuFilesSettings.appendChild(new apf.item({
-            id      : "mnuitemHiddenFiles",
-            type    : "check",
-            caption : "Show Hidden Files",
-            visible : "{trFiles.visible}",
-            checked : "[{require('core/settings').model}::auto/projecttree/@showhidden]",
-            onclick : function(e){
+            id: "mnuitemHiddenFiles",
+            type: "check",
+            caption: "Show Hidden Files",
+            visible: "{trFiles.visible}",
+            checked: "[{require('core/settings').model}::auto/projecttree/@showhidden]",
+            onclick: function(e) {
                 setTimeout(function() {
                     _self.changed = true;
                     settings.save();
 
-                    (davProject.realWebdav || davProject)
-                        .setAttribute("showhidden", e.currentTarget.checked);
+                    (davProject.realWebdav || davProject).setAttribute("showhidden", e.currentTarget.checked);
 
                     _self.refresh();
                 });
             }
         }));
-
-        trFiles.filterUnique = function(pNode, nodes){
+        
+        trFiles.filterUnique = function(pNode, nodes) {
             var filtered = [];
             for (var i = 0, l = nodes.length; i < l; i++) {
-                if (!pNode.selectSingleNode("node()[@path="
-                  + util.escapeXpathString(nodes[i].getAttribute("path")) + "]"))
-                    filtered.push(nodes[i]);
+                if (!pNode.selectSingleNode("node()[@path=" + util.escapeXpathString(nodes[i].getAttribute("path")) + "]")) filtered.push(nodes[i]);
             }
             return filtered;
         }
 
         this.setupTreeListeners();
 
-        if (_self.loadedSettings > 0 && _self.model)
-            _self.onReady();
+        if (_self.loadedSettings > 0 && _self.model) _self.onReady();
     },
 
     /**
      * Sets up listeners on tree events
      */
-    setupTreeListeners : function() {
+    setupTreeListeners: function() {
         var _self = this;
 
         winFilesViewer.addEventListener("prop.visible", function(e) {
@@ -338,27 +357,45 @@ module.exports = ext.register("ext/tree/tree", {
         // selection in the settings model
         trFiles.addEventListener("afterselect", this.$afterselect = function(e) {
             if (settings.model && settings.model.data && trFiles.selected) {
-                var nodePath          = trFiles.selected.getAttribute("path").replace(/"/g, "&quot;");
-                var nodeType          = trFiles.selected.getAttribute("type");
-                var settingsData      = settings.model.data;
+                var nodePath = trFiles.selected.getAttribute("path").replace(/"/g, "&quot;");
+                var nodeType = trFiles.selected.getAttribute("type");
+                var settingsData = settings.model.data;
                 var treeSelectionNode = settingsData.selectSingleNode("auto/tree_selection");
-                if(treeSelectionNode) {
+                if (treeSelectionNode) {
                     apf.xmldb.setAttribute(treeSelectionNode, "path", nodePath);
                     apf.xmldb.setAttribute(treeSelectionNode, "type", nodeType);
                 }
                 else {
                     apf.xmldb.appendChild(settingsData.selectSingleNode("auto"),
-                        apf.n("<tree_selection />")
-                            .attr("path", nodePath)
-                            .attr("type", nodeType)
-                            .node()
-                    );
+                    apf.n("<tree_selection />").attr("path", nodePath).attr("type", nodeType).node());
                 }
 
                 // Also update our own internal selection vars for when the
                 // user refreshes the tree
                 _self.treeSelection.path = nodePath;
                 _self.treeSelection.type = nodeType;
+                
+                try{
+                var ts = _self.treeSelection;
+                itemCtxTreeFavPathDiv.setAttribute("visible","false");
+                itemCtxTreeRmFavPath.setAttribute("visible","false");
+                itemCtxTreeFavPath.setAttribute("visible","false");
+                
+                var isFolder = (ts.type == "folder" && ts.path !== ide.davPrefix)
+                var isRootFolder = _self.isRootPath(ts.path);
+                
+                if(isFolder && !isRootFolder){
+                    itemCtxTreeFavPathDiv.setAttribute("visible","true");
+                    itemCtxTreeFavPath.setAttribute("visible","true");
+                    itemCtxTreeRmFavPath.setAttribute("visible","false");
+                }
+                
+                if(isFolder && isRootFolder){
+                    itemCtxTreeFavPathDiv.setAttribute("visible","true");
+                    itemCtxTreeFavPath.setAttribute("visible","false");
+                    itemCtxTreeRmFavPath.setAttribute("visible","true");
+                }
+                }catch(e){}//markup not loaded
             }
         });
 
@@ -376,21 +413,19 @@ module.exports = ext.register("ext/tree/tree", {
         });
 
         trFiles.addEventListener("beforecopy", this.$beforecopy = function(e) {
-            if (!ide.onLine && !ide.offlineFileSystemSupport)
-                return false;
+            if (!ide.onLine && !ide.offlineFileSystemSupport) return false;
 
-            function rename(pNode, node, filename, isReplaceAction){
-                setTimeout(function () {
+            function rename(pNode, node, filename, isReplaceAction) {
+                setTimeout(function() {
                     fs.beforeRename(pNode, null,
-                        node.getAttribute("path").replace(/[\/]+$/, "") +
-                        "/" + filename, true, isReplaceAction);
+                    node.getAttribute("path").replace(/[\/]+$/, "") + "/" + filename, true, isReplaceAction);
                     pNode.removeAttribute("newname");
                 });
             }
 
             var args, filename;
             for (var i = 0, l = e.args.length; i < l; i++) {
-                args     = e.args[i].args;
+                args = e.args[i].args;
                 filename = args[1].getAttribute("name");
 
                 var count = 0;
@@ -398,10 +433,11 @@ module.exports = ext.register("ext/tree/tree", {
                 while (args[0].selectSingleNode('node()[@name=' + util.escapeXpathString(filename) + ']')) {
                     filename = filename.replace(/\.(\d+)$/, "");
 
-                    var idx  = filename.lastIndexOf(".");
+                    var idx = filename.lastIndexOf(".");
                     if (idx == -1) idx = filename.length;
 
-                    var name = filename.substr(0, idx), ext = filename.substr(idx);
+                    var name = filename.substr(0, idx),
+                        ext = filename.substr(idx);
                     filename = name + "." + ++count + ext;
                 }
                 args[1].setAttribute("newname", filename);
@@ -409,14 +445,12 @@ module.exports = ext.register("ext/tree/tree", {
                 rename(args[1], args[0], filename, count > 0);
             }
         });
-        
-        trFiles.addEventListener("beforerename", this.$beforerename = function(e){
-            if (!ide.onLine && !ide.offlineFileSystemSupport)
-                return false;
 
-            if (trFiles.$model.data.firstChild == trFiles.selected)
-                return false;
-            
+        trFiles.addEventListener("beforerename", this.$beforerename = function(e) {
+            if (!ide.onLine && !ide.offlineFileSystemSupport) return false;
+
+            if (trFiles.$model.data.firstChild == trFiles.selected) return false;
+
             // check for a path with the same name, which is not allowed to rename to:
             var path = e.args[0].getAttribute("path"),
                 newpath = path.replace(/^(.*\/)[^\/]+$/, "$1" + e.args[1]).toLowerCase();
@@ -431,8 +465,7 @@ module.exports = ext.register("ext/tree/tree", {
             }
 
             if (exists) {
-                util.alert("Error", "Unable to Rename",
-                    "That name is already taken. Please choose a different name.");
+                util.alert("Error", "Unable to Rename", "That name is already taken. Please choose a different name.");
                 trFiles.getActionTracker().undo();
                 return false;
             }
@@ -442,11 +475,10 @@ module.exports = ext.register("ext/tree/tree", {
             }
         });
 
-        trFiles.addEventListener("beforemove", this.$beforemove = function(e){
-            if (!ide.onLine && !ide.offlineFileSystemSupport)
-                return false;
+        trFiles.addEventListener("beforemove", this.$beforemove = function(e) {
+            if (!ide.onLine && !ide.offlineFileSystemSupport) return false;
 
-            setTimeout(function(){
+            setTimeout(function() {
                 var changes = e.args;
                 for (var i = 0; i < changes.length; i++) {
                     // If any file exists in its future destination, cancel the event.
@@ -455,8 +487,8 @@ module.exports = ext.register("ext/tree/tree", {
             });
         });
 
-        trFiles.addEventListener("keyup", this.$keyup = function(e){
-            if(this.dragging > 0 && e.keyCode == 27) {
+        trFiles.addEventListener("keyup", this.$keyup = function(e) {
+            if (this.dragging > 0 && e.keyCode == 27) {
                 apf.DragServer.stop();
             }
         });
@@ -470,11 +502,11 @@ module.exports = ext.register("ext/tree/tree", {
         trFiles.addEventListener("dragdrop", $cancelWhenOffline);
 
         // When a folder has been expanded, save it in expandedList
-        trFiles.addEventListener("expand", this.$expand = function(e){
-            if (!e.xmlNode)
-                return;
+        trFiles.addEventListener("expand", this.$expand = function(e) {
+            if (!e.xmlNode) return;
             _self.expandedList[e.xmlNode.getAttribute(apf.xmldb.xmlIdTag)] = e.xmlNode;
 
+            //_self.expandedNodes.push(e.xmlNode.getAttribute("path"));
             // Only save if we are not loading the tree
             if (!_self.loading) {
                 _self.changed = true;
@@ -483,9 +515,8 @@ module.exports = ext.register("ext/tree/tree", {
         });
 
         // When a folder has been expanded, remove it from expandedList
-        trFiles.addEventListener("collapse", this.$collapse = function(e){
-            if (!e.xmlNode)
-                return;
+        trFiles.addEventListener("collapse", this.$collapse = function(e) {
+            if (!e.xmlNode) return;
 
             var id = e.xmlNode.getAttribute(apf.xmldb.xmlIdTag);
             delete _self.expandedList[id];
@@ -495,25 +526,24 @@ module.exports = ext.register("ext/tree/tree", {
         });
     },
 
-    $cancelWhenOffline : function() {
-        if (!ide.onLine && !ide.offlineFileSystemSupport)
-            return false;
+    $cancelWhenOffline: function() {
+        if (!ide.onLine && !ide.offlineFileSystemSupport) return false;
     },
 
-    openSelection : function(){
-        if (!ide.onLine && !ide.offlineFileSystemSupport)
-            return;
+    openSelection: function() {
+        if (!ide.onLine && !ide.offlineFileSystemSupport) return;
 
         var sel = trFiles.getSelection();
-        sel.forEach(function(node){
-            if (!node || node.tagName != "file")
-                return;
+        sel.forEach(function(node) {
+            if (!node || node.tagName != "file") return;
 
-            editors.gotoDocument({node: node});
+            editors.gotoDocument({
+                node: node
+            });
         });
     },
 
-    moveFile : function(node, newpath){
+    moveFile: function(node, newpath) {
         var path = node.getAttribute("path");
         davProject.move(path, newpath, true, false, function(data, state, extra) {
             if (state !== apf.SUCCESS) {
@@ -532,7 +562,7 @@ module.exports = ext.register("ext/tree/tree", {
         trFiles.focus();
     },
 
-    renameFile : function(node) {
+    renameFile: function(node) {
         var path = node.getAttribute("path");
         var oldpath = node.getAttribute("oldpath");
         davProject.rename(oldpath, path, true, false, function(data, state, extra) {
@@ -557,13 +587,13 @@ module.exports = ext.register("ext/tree/tree", {
      *
      * @param boolean animateScrollOnFinish
      */
-    loadProjectTree : function(animateScrollOnFinish) {
+    loadProjectTree: function(animateScrollOnFinish) {
         var _self = this;
 
         // Sort the cached list so it's more probable that nodes near the top of
         // the tree are loaded first, giving the user more visual feedback that
         // something is happening
-        this.expandedNodes.sort();
+        //this.expandedNodes.sort();
 
         this.loading = true;
 
@@ -575,17 +605,22 @@ module.exports = ext.register("ext/tree/tree", {
         // Get the parent node of the new items. If the path is the
         // same as `ide.davPrefix`, then we append to root
         function getParentNodeFromPath(path) {
+            var _isRootPath = _self.isRootPath(path);
             var parentNode;
-            if (path === ide.davPrefix)
+            if (path === ide.davPrefix) 
                 parentNode = trFiles.queryNode("folder[@root=1]");
-            else
+            else if(_isRootPath){
+                parentNode = trFiles.queryNode("folder[@root=1][@path=" + util.escapeXpathString(path) + "]");
+            }else
                 parentNode = trFiles.queryNode('//folder[@path=' + util.escapeXpathString(path) + ']');
 
             return parentNode;
         }
 
         function appendXmlToNode(parentNode, dataXml) {
-            trFiles.insert(dataXml, { insertPoint: parentNode });
+            trFiles.insert(dataXml, {
+                insertPoint: parentNode
+            });
 
             // Set the load status to "loaded" so APF doesn't assume the child
             // nodes still need to be loaded
@@ -619,12 +654,10 @@ module.exports = ext.register("ext/tree/tree", {
 
             // If we didn't find any parent nodes and all the folders have been
             // loaded, then it must mean the parent was collapsed
-            if (numFoldersLoaded === _self.expandedNodes.length)
-                return onFinish();
+            if (numFoldersLoaded === _self.expandedNodes.length) return onFinish();
         }
 
-        if (!this.expandedNodes.length)
-            return onFinish();
+        if (!this.expandedNodes.length) return onFinish();
 
         // Load up the saved list of project tree folders in this.expandedNodes
         for (var i = 0; i < this.expandedNodes.length; i++) {
@@ -642,27 +675,25 @@ module.exports = ext.register("ext/tree/tree", {
 
                     // Go through the orphaned children and remove those that
                     // start with the path of the folder not found
-                    for (var oi = 0; oi < orphanedChildren.length; /* blank */) {
+                    for (var oi = 0; oi < orphanedChildren.length; /* blank */ ) {
                         var child = orphanedChildren[oi];
-                        if ((child.cleanParentPath + "/").indexOf(extra.url) === 0)
-                            orphanedChildren.splice(oi, 1);
-                        else
-                            oi++;
+                        if ((child.cleanParentPath + "/").indexOf(extra.url) === 0) orphanedChildren.splice(oi, 1);
+                        else oi++;
                     }
                 }
                 else {
                     var dataXml = apf.getXml(data);
 
                     // Strip the extra "/" that webDav adds on
-                    var cleanParentPath = extra.url.substr(0, extra.url.length-1);
+                    var cleanParentPath = extra.url.substr(0, extra.url.length - 1);
                     var parentNode = getParentNodeFromPath(cleanParentPath);
 
                     // If we can't find the parent node in the tree, then store
                     // the the result to add later
                     if (!parentNode) {
                         orphanedChildren.push({
-                            cleanParentPath : cleanParentPath,
-                            dataXml : dataXml
+                            cleanParentPath: cleanParentPath,
+                            dataXml: dataXml
                         });
                     }
                     else {
@@ -673,26 +704,21 @@ module.exports = ext.register("ext/tree/tree", {
 
                 // If all the folder children have been loaded and there are no
                 // more orphans to append, then finish
-                if (numFoldersLoaded === _self.expandedNodes.length && !orphanedChildren.length)
-                    return onFinish();
+                if (numFoldersLoaded === _self.expandedNodes.length && !orphanedChildren.length) return onFinish();
             });
         }
 
         // Called when every cached node has been loaded
         function onFinish() {
             // There is the possibility that we are calling this more than once
-            if (!_self.loading)
-                return;
+            if (!_self.loading) return;
 
             _self.loading = false;
 
             // Re-select the last selected item
-            if(_self.treeSelection.path) {
-                var xmlNode = trFiles.$model.queryNode('//node()[@path=' +
-                    util.escapeXpathString(_self.treeSelection.path) + ' and @type="' +
-                    _self.treeSelection.type + '"]');
-                if (xmlNode)
-                    trFiles.select(xmlNode);
+            if (_self.treeSelection.path) {
+                var xmlNode = trFiles.$model.queryNode('//node()[@path=' + util.escapeXpathString(_self.treeSelection.path) + ' and @type="' + _self.treeSelection.type + '"]');
+                if (xmlNode) trFiles.select(xmlNode);
             }
             else {
                 trFiles.select(trFiles.getFirstTraverseNode());
@@ -723,7 +749,7 @@ module.exports = ext.register("ext/tree/tree", {
     /**
      * Called when the user hits the refresh button in the Project Files header
      */
-    refresh : function(){
+    refresh: function() {
         settings.save(true);
 
         // When we clear the model below, it dispatches a scroll event which
@@ -732,8 +758,8 @@ module.exports = ext.register("ext/tree/tree", {
 
         this.scrollPos = trFiles.$ext.scrollTop;
 
-        trFiles.getModel().load("<data><folder type='folder' name='" +
-            ide.projectName + "' path='" + ide.davPrefix + "' root='1'/></data>");
+
+        trFiles.getModel().load(this.createModel());
         this.expandedList = {};
 
         // Make sure the "get" attribute is empty so the file tree doesn't
@@ -741,15 +767,27 @@ module.exports = ext.register("ext/tree/tree", {
         // expands folders
         self["trFilesInsertRule"] && trFilesInsertRule.setAttribute("get", "");
 
-        ide.dispatchEvent("track_action", { type: "reloadtree" });
+        ide.dispatchEvent("track_action", {
+            type: "reloadtree"
+        });
 
         this.loadProjectTree(true);
 
         // Now re-attach the scroll listener
         trFiles.addEventListener("scroll", $trScroll);
-    },
 
-    show : function(e) {
+        //settings.load();
+    },
+    createModel: function() {
+        var _self = this;
+        var roots = "<folder type='folder' name='" + ide.projectName + "' path='" + ide.davPrefix + "' root='1'/>";
+        _self.favTrees.forEach(function(path) {
+            var pathName = path.replace(ide.davPrefix, ide.projectName);
+            roots += "<folder type='folder' name='" + pathName + "' path='" + path + "' root='1'/>";
+        });
+        return "<data>" + roots + "</data>";
+    },
+    show: function(e) {
         if (!this.panel || !this.panel.visible) {
             panels.activate(this);
             this.enable();
@@ -760,8 +798,30 @@ module.exports = ext.register("ext/tree/tree", {
 
         return false;
     },
-
-    destroy : function(){
+    favorPath: function(ts) {
+        this.favTrees.push(ts.path);
+        this.expandedNodes.push(ts.path);
+        this.refresh();
+    },
+    unfavorPath: function(ts) {
+        for (var i in this.favTrees) {
+            if (this.favTrees[i] == ts.path) this.favTrees.splice(i, 1);
+        }
+        this.refresh();
+    },
+    unfavorAllPaths: function() {
+        this.favTrees = [];
+        this.refresh();
+    },
+    isRootPath:function(path){
+        for (var i in this.favTrees) {
+            if (this.favTrees[i] == path) {
+                return true;
+            }
+        }
+        return false;
+    },
+    destroy: function() {
         commands.removeCommandByName("opentreepanel");
         panels.unregister(this);
         this.$destroy();

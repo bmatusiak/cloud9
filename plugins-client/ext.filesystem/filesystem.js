@@ -446,13 +446,16 @@ module.exports = ext.register("ext/filesystem/filesystem", {
                 "[PATH]": {"hint": "path pointing to a file. Autocomplete with [TAB]"}
             }
         });
-
-        this.model = new apf.model();
-        this.model.load("<data><folder type='folder' name='" + ide.projectName +
+        
+        
+        this.model = new apf.model();//set model in tree???
+        
+        /*this.model.load("<data><folder type='folder' name='" + ide.projectName +
             "' path='" + ide.davPrefix + "' root='1'/></data>");
 
         this.model.setAttribute("whitespace", false);
-
+        */
+        
         var dav_url = location.href.replace(location.pathname + location.hash, "") + ide.davPrefix;
         this.webdav = apf.document.documentElement.appendChild(new apf.webdav({
             id  : "davProject",
