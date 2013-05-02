@@ -17,6 +17,7 @@ var UIWorkerClient = require("ace/worker/worker_client").UIWorkerClient;
 var useUIWorker = window.location && /[?&]noworker=1/.test(window.location.search);
 
 var complete = require("ext/language/complete");
+var quickfix = require("ext/language/quickfix");
 var marker = require("ext/language/marker");
 var refactor = require("ext/language/refactor");
 var outline = require("ext/language/outline");
@@ -74,7 +75,7 @@ module.exports = ext.register("ext/language/language", {
                 var path = event.node.getAttribute("path");
                 var editor = editors.currentEditor.amlEditor;
                 // background tabs=open document, foreground tab=switch to file
-                // this is needed because with concorde changeSession event is fired when document is still empty 
+                // this is needed because with concorde changeSession event is fired when document is still empty
                 var isVisible = editor.xmlRoot == event.node;
                 worker.call(isVisible ? "switchFile" : "documentOpen", [
                     util.stripWSFromPath(path),
@@ -92,6 +93,7 @@ module.exports = ext.register("ext/language/language", {
             outline.hook(_self, worker);
             keyhandler.hook(_self, worker);
             jumptodef.hook(_self, worker);
+            quickfix.hook(_self);
 
             ide.dispatchEvent("language.worker", {worker: worker});
             ide.addEventListener("$event.language.worker", function(callback){
@@ -199,7 +201,7 @@ module.exports = ext.register("ext/language/language", {
         if (e && e.xmlNode && e.xmlNode.tagName != "language")
             return;
         // Currently no code editor active
-        if (!editors.currentEditor || !editors.currentEditor.amlEditor || !tabEditors.getPage())
+        if (!editors.currentEditor || !editors.currentEditor.amlEditor || !ide.getActivePage())
             return;
         if(settings.model.queryValue("language/@jshint") != "false")
             this.worker.call("enableFeature", ["jshint"]);
@@ -229,7 +231,7 @@ module.exports = ext.register("ext/language/language", {
         // Currently no code editor active
         if(!editors.currentEditor || editors.currentEditor.path != "ext/code/code" || !tabEditors.getPage() || !this.editor)
             return;
-        var path = tabEditors.getPage().getAttribute("id");
+        var path = ide.getActivePage().getAttribute("id");
         this.worker.call("switchFile", [
             util.stripWSFromPath(path),
             editors.currentEditor.amlEditor.syntax,

@@ -5,14 +5,14 @@ var argv = require('optimist').argv;
 var path = require("path");
 
 var clientExtensions = {};
-var clientDirs = fs.readdirSync(__dirname + "/../plugins-client");
+var clientDirs = fs.readdirSync(path.join(__dirname, "/../plugins-client"));
 for (var i = 0; i < clientDirs.length; i++) {
     var dir = clientDirs[i];
     if (dir.indexOf("ext.") !== 0)
         continue;
 
     var name = dir.split(".")[1];
-    clientExtensions[name] = __dirname + "/../plugins-client/" + dir;
+    clientExtensions[name] = path.join(__dirname, "../plugins-client/", dir);
 }
 
 var projectDir = (argv.w && path.resolve(process.cwd(), argv.w)) || process.cwd();
@@ -21,16 +21,15 @@ var vfsUrl = "/vfs";
 
 var port = argv.p || process.env.PORT || 3131;
 var host = argv.l || process.env.IP || "localhost";
+var debugPort = argv.b || process.env.DEBUG_PORT || 5858;
+
+var useAuth = argv.username && argv.password;
 
 var config = [
     {
         packagePath: "connect-architect/connect",
         port: port,
         host: host
-    }, {
-        packagePath: "./cloud9.sourcemint",
-        prefix: "/static/bundles",
-        plugins: clientExtensions
     }, {
         packagePath: "connect-architect/connect.static",
         prefix: "/static"
@@ -144,8 +143,8 @@ var config = [
             //"ext/githistory/githistory",
             "ext/autosave/autosave",
             "ext/revisions/revisions",
-            "ext/language/liveinspect"
-            //"ext/splitview/splitview"
+            "ext/language/liveinspect",
+            "ext/splitview/splitview"
             //"ext/minimap/minimap"
         ]
     }, {
@@ -184,7 +183,8 @@ var config = [
     },
     {
         packagePath: "./cloud9.run.node-debug",
-        listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host."
+        listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host.",
+        debugPort: debugPort
     },
     "./cloud9.run.npm",
     "./cloud9.run.npmnode",
@@ -192,6 +192,7 @@ var config = [
     "./cloud9.run.python",
     "./cloud9.run.apache",
     "./cloud9.run.php",
+    "./cloud9.run.other",
     "architect/plugins/architect.log",
     "./cloud9.ide.auth",
     "./cloud9.ide.git",
@@ -209,6 +210,7 @@ var config = [
     "./cloud9.ide.run-apache",
     "./cloud9.ide.run-ruby",
     "./cloud9.ide.run-php",
+    "./cloud9.ide.run-other",
     "./cloud9.run.python",
     "./cloud9.ide.revisions",
     {
@@ -217,7 +219,15 @@ var config = [
     },
     "./cloud9.ide.shell",
     "./cloud9.ide.state",
-    "./cloud9.ide.watcher"
+    "./cloud9.ide.watcher",
 ];
+
+if (useAuth) {
+    config.push({
+        packagePath: "./cloud9.connect.basic-auth",
+        username: argv.username,
+        password: argv.password
+    });
+}
 
 module.exports = config;

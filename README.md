@@ -34,95 +34,76 @@ We support the newer versions of Chrome, Firefox and Safari.
 
 ## Installation and Usage
 
+If installing on Windows, please refer to [Installation on Windows](##installation-on-windows-experimental).
+
 Requirements:
 
   * NodeJS `>= 0.6.16`
   * NPM `>= 1.1.16`
+  * libxml2-dev
 
 Install:
 
-    # Be sure you have sourcemint installed:
-
-    npm install -g sm
-    
-    # Then:
-
-    sm clone --dev https://github.com/ajaxorg/cloud9/tree/master cloud9
-    
-    # or
-    
-    git clone https://github.com/ajaxorg/cloud9.git cloud9
+    git clone https://github.com/ajaxorg/cloud9.git
     cd cloud9
-    sm install
-    
+    npm install
 
+The above install steps create a `cloud9` directory with a `bin/cloud9.sh`
+script that can be used to start Cloud9:
 
-The above install steps create a `cloud9` directory in your current directory. Just `cd` into it
-and run `bin/cloud9.sh` to start:
-
-    cd cloud9
     bin/cloud9.sh
-    
+
 Optionally, you may specify the directory you'd like to edit:
 
     bin/cloud9.sh -w ~/git/myproject
-    
+
 Cloud9 will be started as a web server on port `-p 3131`, you can access it by
 pointing your browser to: [http://localhost:3131](http://localhost:3131)
+
+By default Cloud9 will only listen to localhost.
+To listen to a different IP or hostname, use the `-l HOSTNAME` flag.
+If you want to listen to all IP's:
+
+    bin/cloud9.sh -l 0.0.0.0
+
+If you are listening to all IPs it is adviced to add authentication to the IDE.
+You can either do this by adding a reverse proxy in front of Cloud9,
+or use the built in basic authentication through the `--username` and `--password` flags.
+
+    bin/cloud9.sh --username leuser --password c9isawesome
+
+Cloud9 is compatible with all connect authentication layers,
+to implement your own, please see the `plugins-server/cloud9.connect.basic-auth` plugin
+on how we added basic authentication.
+
+## Installation on Windows (experimental)
+
+If you're running Cloud9 on Windows you'll have to follow these steps as well:
+
+  * Install [Grep for Windows](http://gnuwin32.sourceforge.net/downlinks/grep.php)
+  * Add `C:\Program Files (x86)\GnuWin32\bin` to your [PATH](http://www.computerhope.com/issues/ch000549.htm)
+  * Open a new instance of `cmd` with elevated rights (right click 'Run as adminstrator')
+  * Now follow the steps under 'Install'
+  * *Please note that the `npm install` fails due to a libxml error, but you can ignore that for now.*
+
+To start Cloud9, please don't start through `bin/cloud9.sh` but rather via:
+
+    node server.js [args]
+
+Please note that there will be errors displayed regarding the `find` command,
+and that some features might not work.
+Feel free to improve the Windows experience and open a pull request.
 
 ## Updating
 
 To update to the latest version (if this doesn't work, just make a fresh clone):
 
     git pull
-    sm update
+    npm update
 
-`sm update` does not currently install missing npm dependencies. To do so use:
+`npm update` does not currently install missing dependencies. To do so use:
 
-    sm install
-
-## Development
-
-To work on a subcomponent that is copied into node_modules, you can use `sm edit`.
-For instance, to work on ACE, run the following from the checkout root:
-
-    sm edit ace
-
-This is somewhat equivalent to `npm link` but instead of linking to a system wide
-shared package it clones the source into the node_modules/<name> directory.
-The idea is to only "edit" when you need to make changes and when done issue
-"sm save <name>" (not yet implemented) which will pull up sourcetree to commit,
-push code and switch package back to read mode (frozen). The status page 
-
-    sm status
-
-shows problematic and improvement oriented action steps to improve the state of
-the program. These relate to git status and dependency changes that need to be
-made to bring the dependencies up to date and ready to publish which leads to deployment.
-
-The line on the status page will have a (W) if it is setup for editing.
-
-To launch Sourcetree for all dirty/ahead repositories in the dependency
-tree use (need to have Sourcetree command-line tools installed (`stree`)):
-
-    sm fix
-
-The sourcemint package manager works alongside NPM so to link in a
-(system-wide shared) NPM package use:
-
-    rm -R node_modules/architect
-    npm link architect
-
-`sm` always works on your program sub-tree other than pulling things in
-from the cache.
-
-To view help info for cloud9 use:
-
-    sm help
-
-To view usage info for `sm` use:
-
-    sm -h
+    npm install
 
 ## Open Source Projects Used
 
@@ -138,8 +119,8 @@ Main projects that we use as building blocks:
   * [ace](http://github.com/ajaxorg/ace) by [fjakobs]
   * [apf](http://www.ajax.org) by [ajax.org]
   * and of course [Node.JS]!
-  
-Thanks to all developers and contributors of these projects! 
+
+Thanks to all developers and contributors of these projects!
 
 [fjakobs]: http://github.com/fjakobs
 [javruben]: http://github.com/javruben
