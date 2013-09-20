@@ -68,8 +68,7 @@ util.inherits(TerminalPlugin, Plugin);
             default://not one of our commands!!!
                 return false;
         }
-        console.log(message);
-        console.log("---------");
+        
         //doo stuff
         var term;
         if(msg && msg.fd && !_self.ptys[msg.fd]){
@@ -128,7 +127,6 @@ util.inherits(TerminalPlugin, Plugin);
                     });
                 }
             });
-            console.log(term.fd);
         }
         
         if(cmd == "ttyData"){
