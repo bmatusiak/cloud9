@@ -193,6 +193,12 @@ module.exports = ext.register("ext/terminal/terminal", {
                         timer = setTimeout(function(){
                             terminal.onafterresize();
                         }, 5000);
+                        
+                        ide.send({
+                            command: "ttyPing",
+                            fd: doc.state.fd
+                        });
+                        _self.terminals[doc.state.fd] = terminal;
                     }
                     else {
                         terminal.onResize();
@@ -306,6 +312,8 @@ module.exports = ext.register("ext/terminal/terminal", {
                 "skin":"divider_console",  
                 "margin": "2 0 2 7"
             }), btnCollapseConsole);
+        
+        
     },
 
     init : function() {
@@ -336,6 +344,7 @@ module.exports = ext.register("ext/terminal/terminal", {
               || message.command === "ttyGone"
               || message.command === "ttyResize") {
                 _self[message.command](message);
+                //console.log(message.command,message);
                 settings.save();
             }
         });
@@ -348,7 +357,7 @@ module.exports = ext.register("ext/terminal/terminal", {
             barTerminal.setAttribute("class", "c9terminal");
         });
 
-        barTerminal.addEventListener("focus", function(){
+        barTerminal.addEventListener("focus", function(e){
             barTerminal.setAttribute("class", "c9terminal c9terminalFocus");
         });
 
@@ -393,6 +402,16 @@ module.exports = ext.register("ext/terminal/terminal", {
                 });
             }
         });
+        
+        if(ide.connected){
+            for (var fd in _self.terminals) {
+                ide.send({
+                    command: "ttyPing",
+                    fd: fd
+                });
+            }
+        }
+        
     },
     
     openNewTerminal: function(){
