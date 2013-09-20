@@ -63,7 +63,9 @@ module.exports = ext.register("ext/tree/tree", {
     nodes            : [],
     model            : null,
     offline          : false,
-
+    
+    favTrees: [],
+    
     "default"        : true,
 
     hook : function(){
@@ -94,7 +96,10 @@ module.exports = ext.register("ext/tree/tree", {
          */
         ide.addEventListener("init.ext/filesystem/filesystem", function(e) {
             _self.model = e.ext.model;
-
+            
+            _self.model.load(_self.createModel());
+            _self.model.setAttribute("whitespace", false);
+            
             // loadedSettings is set after "settings.load" is dispatched.
             // Thus if we have our model setup and we have the cached expanded
             // folders, then we can load the project tree
@@ -108,7 +113,22 @@ module.exports = ext.register("ext/tree/tree", {
                 apf.isTrue(model.queryValue('auto/projecttree/@showhidden')));
 
             _self.scrollPos = model.queryValue('auto/projecttree/@scrollpos');
-
+            
+            var favTreesStore = model.queryValue("auto/favTreesStore");
+            if (favTreesStore) {
+                try {
+                    _self.favTrees = JSON.parse(favTreesStore);
+                }
+                catch (ex) {
+                    _self.favTrees = [];
+                }
+            }
+            else {
+                _self.favTrees = [];
+            }
+            //console.log("loaded fav trees", _self.favTrees);
+            fs.model.load(_self.createModel());
+            
             // auto/projecttree contains the saved expanded nodes
             var strSettings = model.queryValue("auto/projecttree");
             if (strSettings) {
@@ -179,9 +199,16 @@ module.exports = ext.register("ext/tree/tree", {
 
                 if (!parts.length)
                     _self.expandedNodes.push(path);
+                else {
+                    for (var i in _self.favTrees) {
+                        if (_self.favTrees[i] == path) _self.expandedNodes.push(path);
+                    }
+                }
             }
 
             expandedNodes.nodeValue = JSON.stringify(_self.expandedNodes);
+            var favTreesStore = apf.createNodeFromXpath(e.model.data, "auto/favTreesStore/text()");
+            favTreesStore.nodeValue = JSON.stringify(_self.favTrees);
             _self.changed = false;
         });
 
@@ -198,12 +225,36 @@ module.exports = ext.register("ext/tree/tree", {
                 return;
 
             var nodes = parent.childNodes;
-            var files = {};
+            /*var files = {};
             
             e.files.forEach(function(f) {
                 files[f.name] = f;
+            });*/
+            
+            var files = {},$files = {};
+            
+            e.files.forEach(function(f) {
+                $files[f.name] = f;
             });
-
+            
+            var fKeys = [];
+            for(var i in $files){
+                fKeys.push(i);
+            }
+            fKeys.sort();
+            fKeys.sort(function(a, b) {
+                var check = $files[a].type;
+                if (check == "folder") 
+                    return 1;
+                else 
+                    return -1;
+            });
+            fKeys.reverse();
+            for (i = 0; i < fKeys.length; i++){
+                files[fKeys[i]] = $files[fKeys[i]];
+            }
+            
+    
             if (!apf.isTrue(settings.model.queryValue("auto/projecttree/@showhidden"))) {
                 var hiddenExtensions = ["pyc", "class"];
                 var hiddenExtensionsRegex = new RegExp("\\.(?:" + hiddenExtensions.join("|") + ")$");
@@ -361,6 +412,28 @@ module.exports = ext.register("ext/tree/tree", {
                 // user refreshes the tree
                 _self.treeSelection.path = nodePath;
                 _self.treeSelection.type = nodeType;
+                
+                try{
+                    var ts = _self.treeSelection;
+                    itemCtxTreeFavPathDiv.setAttribute("visible","false");
+                    itemCtxTreeRmFavPath.setAttribute("visible","false");
+                    itemCtxTreeFavPath.setAttribute("visible","false");
+                    
+                    var isFolder = (ts.type == "folder" && ts.path !== ide.davPrefix)
+                    var isRootFolder = _self.isRootPath(ts.path);
+                    
+                    if(isFolder && !isRootFolder){
+                        itemCtxTreeFavPathDiv.setAttribute("visible","true");
+                        itemCtxTreeFavPath.setAttribute("visible","true");
+                        itemCtxTreeRmFavPath.setAttribute("visible","false");
+                    }
+                    
+                    if(isFolder && isRootFolder){
+                        itemCtxTreeFavPathDiv.setAttribute("visible","true");
+                        itemCtxTreeFavPath.setAttribute("visible","false");
+                        itemCtxTreeRmFavPath.setAttribute("visible","true");
+                    }
+                }catch(e){}//markup not loaded
             }
         });
 
@@ -577,10 +650,13 @@ module.exports = ext.register("ext/tree/tree", {
         // Get the parent node of the new items. If the path is the
         // same as `ide.davPrefix`, then we append to root
         function getParentNodeFromPath(path) {
+            var _isRootPath = _self.isRootPath(path);
             var parentNode;
-            if (path === ide.davPrefix)
+            if (path === ide.davPrefix) 
                 parentNode = trFiles.queryNode("folder[@root=1]");
-            else
+            else if(_isRootPath){
+                parentNode = trFiles.queryNode("folder[@root=1][@path=" + util.escapeXpathString(path) + "]");
+            }else
                 parentNode = trFiles.queryNode('//folder[@path=' + util.escapeXpathString(path) + ']');
 
             return parentNode;
@@ -719,6 +795,7 @@ module.exports = ext.register("ext/tree/tree", {
             self["trFilesInsertRule"] && trFilesInsertRule.setAttribute("get", "{davProject.readdir([@path])}");
 
             settings.save();
+            
         }
     },
 
@@ -749,6 +826,8 @@ module.exports = ext.register("ext/tree/tree", {
 
         // Now re-attach the scroll listener
         trFiles.addEventListener("scroll", $trScroll);
+        
+        this.expandedNodes.sort();
     },
 
     show : function(e) {
@@ -760,6 +839,39 @@ module.exports = ext.register("ext/tree/tree", {
             panels.deactivate(null, true);
         }
 
+        return false;
+    },
+    
+    createModel: function() {
+        var _self = this;
+        var roots = "<folder type='folder' name='" + ide.projectName + "' path='" + ide.davPrefix + "' root='1'/>";
+        _self.favTrees.forEach(function(path) {
+            var pathName = path.replace(ide.davPrefix, ide.projectName);
+            roots += "<folder type='folder' name='" + pathName + "' path='" + path + "' root='1'/>";
+        });
+        return "<data>" + roots + "</data>";
+    },
+    favorPath: function(ts) {
+        this.favTrees.push(ts.path);
+        this.expandedNodes.push(ts.path);
+        this.refresh();
+    },
+    unfavorPath: function(ts) {
+        for (var i in this.favTrees) {
+            if (this.favTrees[i] == ts.path) this.favTrees.splice(i, 1);
+        }
+        this.refresh();
+    },
+    unfavorAllPaths: function() {
+        this.favTrees = [];
+        this.refresh();
+    },
+    isRootPath:function(path){
+        for (var i in this.favTrees) {
+            if (this.favTrees[i] == path) {
+                return true;
+            }
+        }
         return false;
     },
 
