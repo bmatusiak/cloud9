@@ -183,7 +183,7 @@ module.exports = ext.register("ext/tree/tree", {
             // This checks that each expanded folder has a root that's already
             // been saved
             var splitPrefix = ide.davPrefix.split("/");
-            splitPrefix.pop();
+            //splitPrefix.pop();
             var rootPrefixNodes = splitPrefix.length;
             var rootPrefix = splitPrefix.join("/");
             var cc, parts;
