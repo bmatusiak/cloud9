@@ -28,13 +28,8 @@ var TerminalPlugin = function(ide, workspace) {
     this.hooks = ["command"];
     this.name = "terminal";
 
-    this.gitEnv = {
-        GIT_ASKPASS: "/bin/echo",
-        EDITOR: "",
-        GIT_EDITOR: ""
-    };
     this.ptys= {};
-    this.processCount = 0;
+    this.ptysCount = 0;
 };
 
 util.inherits(TerminalPlugin, Plugin);
@@ -73,11 +68,28 @@ util.inherits(TerminalPlugin, Plugin);
             default://not one of our commands!!!
                 return false;
         }
-
+        console.log(message);
+        console.log("---------");
         //doo stuff
         var term;
-        
+        if(msg && msg.fd && !_self.ptys[msg.fd]){
+            client.send({
+                command:"ttyGone",
+                fd:msg.fd
+            });
+        }
+        if(msg && msg.fd && _self.ptys[msg.fd]){
+            term = _self.ptys[msg.fd];
+            if(!term){
+                client.send({
+                    command:"ttyGone",
+                    fd:msg.fd
+                });
+                return true;
+            }
+        }
         if(cmd == "ttyCreate"){
+       
             if(PluginOptions.isSSH){
                 term = pty.spawn("ssh", [PluginOptions.host], {
                     name: 'xterm-color',
@@ -93,27 +105,34 @@ util.inherits(TerminalPlugin, Plugin);
                     env: process.env
                 });
             }
+            _self.ptysCount++;
             
             _self.ptys[term.fd] = term;
             
+            term.reqId = message.reqId;
+            term.lastData = "";
             client.send({
                     command:"ttyCallback",
                     fd:term.fd,
-                    reqId:message.reqId
+                    reqId:term.reqId
                 });
             
             term.on("data", function(data) {
-                client.send({
-                    command:"ttyData",
-                    fd:term.fd,
-                    data:data
-                });
+                term.lastData = data;
+                for(var i in user.clients){
+                    var $client = user.clients[i];
+                    $client.send({
+                        command:"ttyData",
+                        fd:term.fd,
+                        data:data
+                    });
+                }
             });
+            console.log(term.fd);
         }
+        
         if(cmd == "ttyData"){
             if(_self.ptys[msg.fd]){
-                term = _self.ptys[msg.fd];
-                
                 term.write(msg.data);
             }else{
                 client.send({
@@ -124,13 +143,12 @@ util.inherits(TerminalPlugin, Plugin);
         }
         if(cmd == "ttyKill"){
             if(_self.ptys[msg.fd]){
-                term = _self.ptys[msg.fd];
                 term.destroy();
+                _self.ptysCount--;            
             }
         }
         if(cmd == "ttyResize"){
             if(_self.ptys[msg.fd]){
-                term = _self.ptys[msg.fd];
                 try{
                     term.resize(msg.cols, msg.rows);
                 }catch(e){}
@@ -141,7 +159,17 @@ util.inherits(TerminalPlugin, Plugin);
             }
         }
         if(cmd == "ttyPing"){
-            
+            if(term)
+                client.send({
+                    command:"ttyData",
+                    fd:term.fd,
+                    data:term.lastData
+                });
+            else
+                client.send({
+                    command:"ttyGone",
+                    fd:msg.fd
+                });
         }
         return true;
     };
