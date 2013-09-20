@@ -811,8 +811,7 @@ module.exports = ext.register("ext/tree/tree", {
 
         this.scrollPos = trFiles.$ext.scrollTop;
 
-        trFiles.getModel().load("<data><folder type='folder' name='" +
-            ide.projectName + "' path='" + ide.davPrefix + "' root='1'/></data>");
+        trFiles.getModel().load(this.createModel());
         this.expandedList = {};
 
         // Make sure the "get" attribute is empty so the file tree doesn't
