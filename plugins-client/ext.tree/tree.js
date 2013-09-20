@@ -386,7 +386,29 @@ module.exports = ext.register("ext/tree/tree", {
                 }
             }
         });
-
+        
+        mnuCtxTree.addEventListener("afterrender", function() {
+            var ts = _self.treeSelection;
+            itemCtxTreeFavPathDiv.setAttribute("visible","false");
+            itemCtxTreeRmFavPath.setAttribute("visible","false");
+            itemCtxTreeFavPath.setAttribute("visible","false");
+            
+            var isFolder = (ts.type == "folder" && ts.path !== ide.davPrefix)
+            var isRootFolder = _self.isRootPath(ts.path);
+            
+            if(isFolder && !isRootFolder){
+                itemCtxTreeFavPathDiv.setAttribute("visible","true");
+                itemCtxTreeFavPath.setAttribute("visible","true");
+                itemCtxTreeRmFavPath.setAttribute("visible","false");
+            }
+            
+            if(isFolder && isRootFolder){
+                itemCtxTreeFavPathDiv.setAttribute("visible","true");
+                itemCtxTreeFavPath.setAttribute("visible","false");
+                itemCtxTreeRmFavPath.setAttribute("visible","true");
+            }
+        });
+        
         // After an item in the tree has been clicked on, this saves that
         // selection in the settings model
         trFiles.addEventListener("afterselect", this.$afterselect = function(e) {
