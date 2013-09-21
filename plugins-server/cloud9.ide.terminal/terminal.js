@@ -108,6 +108,18 @@ util.inherits(TerminalPlugin, Plugin);
             
             _self.ptys[term.fd] = term;
             
+            term.on('exit', function(){
+                term.destroy();
+                _self.ptysCount--;
+                for(var i in user.clients){
+                    var $client = user.clients[i];
+                    $client.send({
+                        command:"ttyGone",
+                        fd:term.fd
+                    });
+                }
+            });
+            
             term.reqId = message.reqId;
             term.lastData = "";
             client.send({
