@@ -1,4 +1,3 @@
-
 define(function(require, exports, module) {
     var InputHandler = require("./input");
     var MouseHandler = require("./mouse");
