@@ -2059,6 +2059,8 @@ Terminal.prototype.keyDown = function(ev) {
       break;
   }
   
+  this.lastKey = ev.keyCode;
+  
   function defaultHandle() {
       defaultKeys = true;
     
