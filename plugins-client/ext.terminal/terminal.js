@@ -4,7 +4,6 @@
  * @copyright 2010, Ajax.org B.V.
  * @license GPLv3 <http://www.gnu.org/licenses/gpl.txt>
  */
-/*global self barTerminal tabEditors*/
 
 define(function(require, exports, module) {
 
@@ -13,63 +12,63 @@ var ext = require("core/ext");
 var util = require("core/util");
 var markup = require("text!ext/terminal/terminal.xml");
 var editors = require("ext/editors/editors");
-var Aceterm = require("./aceterm");
-var Terminal = require("./libterm");
-var Monitor = require("ext/terminal/monitor");
+var Terminal = require("ext/terminal/libterm");
+//var Monitor = require("ext/terminal/monitor");
 var commands = require("ext/commands/commands");
 var menus = require("ext/menus/menus");
 var settings = require("ext/settings/settings");
-
 var cssString = require("text!ext/terminal/style.css");
 var markupSettings = require("text!ext/terminal/settings.xml");
+//require console since we use the a:hbox(cliBox) to append the terminal button
+require("ext/console/console");
 
+Terminal.bindKeys = function() {
+    if (Terminal.keysAreBound) return;
+    Terminal.keysAreBound = true;
+
+    // We could put an "if (Terminal.focus)" check
+    // here, but it shouldn't be necessary.
+
+    apf.addListener(document, 'keydown', function(ev) {
+        if (barTerminal.hasFocus() && Terminal.focus)
+            Terminal.focus.keyDown(ev);
+    }, true);
+
+    apf.addListener(document, 'keypress', function(ev) {
+        if (barTerminal.hasFocus() && Terminal.focus)
+            Terminal.focus.keyPress(ev);
+    }, true);
+
+    apf.addListener(document, 'paste', function(ev) {
+        if (barTerminal.hasFocus() && Terminal.focus)
+            Terminal.focus.paste(ev);
+    }, true);
+};
 
 Terminal.prototype.onResize = function(width, height) {
     if (this.preventResize)
         return;
 
-    if (!this.fd)
-        return;
+    var container = module.exports.container;
 
-    var terminal = this;
-    var ace      = this.aceSession && this.aceSession.ace;
-    
-    if (!terminal || !ace) return;
-    
-    var size   = ace.renderer.$size;
-    var config = ace.renderer.layerConfig;
-    
-    var h = size.scrollerHeight;
-    var w = size.scrollerWidth - 2 * config.padding;
-    
-    if (!h || config.lineHeight === 1)
-        return false;
+    var x = (width || container.clientWidth) / this.element.offsetWidth;
+    var y = (height || container.clientHeight) / this.element.offsetHeight;
+    x = (x * this.cols) | 0;
+    y = (y * this.rows) | 0;
 
-    // top 1px is for cursor outline
-    var rows = Math.floor((h - 1) / config.lineHeight);
-    var cols = Math.floor(w / config.characterWidth);
-    
-    cols = Math.max(cols, 1);
-    rows = Math.max(rows, 1);
-    
-    if (cols == 1 || rows == 1)
-        return;
+    this.resize(x, y);
 
-    // Don't do anything if the size remains the same
-    if (cols == terminal.cols && rows == terminal.rows)
-        return;
-
-    terminal.resize(cols, rows);
     ide.send({
         command: "ttyResize",
         fd: this.fd,
-        cols: cols,
-        rows: rows
+        cols: x,
+        rows: y
     });
 };
 
 /**
  * TODO:
+ * - bug: paste doesn't work
  * - bug: server crashes when reinstating terminal
  *
  * LATER:
@@ -91,10 +90,12 @@ module.exports = ext.register("ext/terminal/terminal", {
     counter : 0,
 
     focus : function(){
+        barTerminal.focus();
         var page = tabEditors.getPage();
         if (!page) return;
 
-        this.container.ace.focus();
+        var doc = page.$doc;
+        Terminal.focus = doc.terminal;
     },
 
     getState : function(doc){
@@ -121,96 +122,24 @@ module.exports = ext.register("ext/terminal/terminal", {
     },
 
     setState : function(doc, state, terminal){
-        var fd = state.fd;
-        if (fd && terminal.fd || this.terminals[fd])
-            delete state.fd;
-
         for (var prop in state) {
             terminal[prop] = state[prop];
         }
-        if (state.fd)
-            this.terminals[fd] = terminal;
-    },
-    
-    createAceterm: function(barTerminal) {
-        // Fetch Reference to the HTML Element
-        var container = barTerminal.firstChild.$ext;
-        
-        // todo do we need barTerminal or e.htmlNode
-        var ace = Aceterm.createEditor();
-        var st = ace.container.style;
-        st.position = "absolute";
-        st.left    = "0px";
-        st.right   = "0px";
-        st.top     = "0px";
-        st.bottom  = "0px";
-        st.background = "transparent";
-        st.color = Terminal.defaultColors.fg;
-        ace.setTheme({cssClass: "terminal", isDark: true});
-        container.appendChild(ace.container);
-        
-        ace.on("focus", function() {
-            if (barTerminal && barTerminal.$ext && window.apf)
-                apf.setStyleClass(barTerminal.$ext, "c9terminalFocus");
+
+        var lines = terminal.element.childNodes;
+        Array.prototype.forEach.call(lines, function(item){
+            item.innerHTML = "";
         });
-        ace.on("blur", function() {
-            if (barTerminal && barTerminal.$ext && window.apf)
-                apf.setStyleClass(barTerminal.$ext, null, ["c9terminalFocus"]);
-        });
-        
-        barTerminal.firstChild.$focussable = true;
-        barTerminal.firstChild.focus = function() {
-            ace.focus();
-        };
-        barTerminal.firstChild.blur = function() {
-            ace.blur();
-        };
-        /*
-        var cm = commands;
-        // TODO find better way for terminal and ace commands to coexist
-        setTimeout(function() {
-            ace.commands.addCommands([{
-                    bindKey: {win: "F12", mac: "F12|cmd-`"},
-                    name:"passKeysToBrowser",
-                    passEvent: true,
-                    exec:function(){}
-                },
-                cm.commands.find,
-                cm.commands.openterminal,
-                cm.commands.gotofile,
-                cm.commands.searchinfiles,
-                cm.commands.searchinfiles,
-                cm.commands.close_term_pane,
-                cm.commands.closeallbutme,
-                cm.commands.closealltabs,
-                cm.commands.closealltotheleft,
-                cm.commands.closealltotheright,
-                cm.commands.closepane,
-                cm.commands.closetab,
-                cm.commands.movetabright,
-                cm.commands.movetableft,
-                cm.commands.movetabup,
-                cm.commands.movetabdown,
-                cm.commands.nexttab,
-                cm.commands.previoustab,
-                cm.commands.hidesearchreplace || {},
-                cm.commands.hidesearchinfiles || {},
-                cm.commands.toggleconsole || {}
-            ].filter(function(x){return x}));
-        }, 1000);
-        ace.commands.exec = function(command) {
-            return cm.exec(command);
-        };
-        */
-        return container.ace = ace;
+
+        terminal.scrollDisp(0);
     },
 
     setDocument : function(doc, actiontracker){
         var _self = this;
 
         //Remove the previously visible terminal
-        if (!this.ace)
-            this.ace = this.createAceterm(barTerminal);
+        if (this.container.firstChild)
+            this.container.removeChild(this.container.firstChild);
 
         if (!doc.terminal && !doc.starting) {
             doc.starting = true;
@@ -219,7 +148,7 @@ module.exports = ext.register("ext/terminal/terminal", {
             var node = doc.getNode();
             node.setAttribute("name", node.getAttribute("name").split(".")[0]);
 
-            var terminal = _self.newTab(function(err, terminal) {
+            _self.newTab(function(err, terminal) {
                 if (err) {
                     util.alert(
                         "Error opening Terminal",
@@ -230,7 +159,12 @@ module.exports = ext.register("ext/terminal/terminal", {
                     return;
                 }
 
-                terminal.$monitor = new Monitor(terminal);
+                // Create a container and initialize the terminal in it.
+                terminal.open();
+                terminal.container = this.container;
+                _self.container.appendChild(terminal.element);
+                terminal.onResize();
+                //terminal.$monitor = new Monitor(terminal);
 
                 var cb = function(){
                     if (doc.state) {
@@ -259,6 +193,12 @@ module.exports = ext.register("ext/terminal/terminal", {
                         timer = setTimeout(function(){
                             terminal.onafterresize();
                         }, 5000);
+                        
+                        ide.send({
+                            command: "ttyPing",
+                            fd: doc.state.fd
+                        });
+                        _self.terminals[doc.state.fd] = terminal;
                     }
                     else {
                         terminal.onResize();
@@ -269,13 +209,17 @@ module.exports = ext.register("ext/terminal/terminal", {
                 if (apf.window.vManager.check(barTerminal, "term" + terminal.fd, cb))
                     cb();
 
+                apf.addListener(terminal.element, "mousedown", function(){
+                    barTerminal.focus();
+                });
+
                 menus.addItemByPath("View/Terminals/"
                   + doc.getNode().getAttribute("name"),
                   doc.mnuItem = new apf.item({
                     onclick : function(){
                         tabEditors.set(doc.getNode().getAttribute("path"));
                     }
-                }), 300);
+                }), 300)
 
                 terminal.on("title", function(title){
                     apf.xmldb.setAttribute(doc.getNode(), "name", title);
@@ -296,6 +240,10 @@ module.exports = ext.register("ext/terminal/terminal", {
                 if (doc.mnuItem && doc.mnuItem.parentNode)
                     doc.mnuItem.parentNode.removeChild(doc.mnuItem);
 
+                var el = doc.terminal.element;
+                if (el.parentNode)
+                    el.parentNode.removeChild(el);
+
                 var fd = doc.terminal.fd;
                 if (!fd)
                     return;
@@ -311,11 +259,9 @@ module.exports = ext.register("ext/terminal/terminal", {
 
                 delete _self.terminals[fd];
             });
-            
-            this.container.ace.setSession(terminal.aceSession);
         }
         else if (doc.terminal){
-            this.container.ace.setSession(doc.terminal.aceSession);
+            this.container.appendChild(doc.terminal.element);
 
             this.focus();
         }
@@ -329,7 +275,7 @@ module.exports = ext.register("ext/terminal/terminal", {
           this.mnuItem = new apf.item({
               command  : "openterminal"
           }), 100),
-        menus.addItemByPath("View/Terminals/~", new apf.divider(), 200);
+        menus.addItemByPath("View/Terminals/~", new apf.divider(), 200)
 
         commands.addCommand({
             name: "openterminal",
@@ -352,46 +298,31 @@ module.exports = ext.register("ext/terminal/terminal", {
 
         settings.addSettings("Terminal", markupSettings);
         
-        ide.addEventListener("socketMessage", function (evt) {
-            var message = evt.message;
-            if (message.command === "ttyCallback"
-              || message.command === "ttyData"
-              || message.command === "ttyGone"
-              || message.command === "ttyResize") {
-                _self[message.command](message);
-                settings.save();
-            }
-        });
-
-        ide.addEventListener("init.ext/console/console", function() {
-            cliBox.appendChild(new apf.button({
-                "skin":"c9-simple-btn",
-                "class":"btn-terminal",
-                "margin": "6 0 0 4",
+        cliBox.appendChild(new apf.button(
+            {
+                "skin":"c9-simple-btn", 
+                "class":"btn-terminal", 
+                "margin": "6 0 0 4", 
                 "caption":"Open a Terminal",
                 "icon" : "terminal_tab_icon.png",
                 "onclick": "require('ext/terminal/terminal').openNewTerminal();"
             }), btnCollapseConsole);
-            cliBox.appendChild(new apf.divider({
-                "skin":"divider_console",
+        cliBox.appendChild(new apf.divider(
+            {
+                "skin":"divider_console",  
                 "margin": "2 0 2 7"
             }), btnCollapseConsole);
-        });
-    },
-    
-    addCss : function() {
-        if (cssString) {
-            apf.importCssString(cssString);
-            cssString = "";
-        }
+        
+        
     },
 
     init : function() {
         var _self = this;
         var editor = barTerminal;
 
-        this.addCss();
+        apf.importCssString(cssString);
 
+        barTerminal.$focussable = true;
         this.container = barTerminal.firstChild.$ext;
         barTerminal.firstChild.$isTextInput = function(){return true};
         barTerminal.firstChild.disabled = false;
@@ -406,6 +337,30 @@ module.exports = ext.register("ext/terminal/terminal", {
 
         /* Initialize the Terminal */
 
+        ide.addEventListener("socketMessage", function (evt) {
+            var message = evt.message;
+            if (message.command === "ttyCallback"
+              || message.command === "ttyData"
+              || message.command === "ttyGone"
+              || message.command === "ttyResize") {
+                _self[message.command](message);
+                //console.log(message.command,message);
+                settings.save();
+            }
+        });
+
+        barTerminal.addEventListener("blur", function(){
+            Terminal.focus = null;
+            var cursor = document.querySelector(".terminal .reverse-video");
+            if (cursor && apf.isTrue(settings.model.queryValue("auto/terminal/blinking")))
+                cursor.parentNode.removeChild(cursor);
+            barTerminal.setAttribute("class", "c9terminal");
+        });
+
+        barTerminal.addEventListener("focus", function(e){
+            barTerminal.setAttribute("class", "c9terminal c9terminalFocus");
+        });
+
         // Keep the terminal resized
         barTerminal.addEventListener("resize", function() {
             if (!this.$ext.offsetWidth && !this.$ext.offsetHeight)
@@ -414,8 +369,11 @@ module.exports = ext.register("ext/terminal/terminal", {
             this.lastWidth = this.getWidth();
             this.lastHeight = this.getHeight();
 
-            if (_self.ace)
-                _self.ace.renderer.onResize();
+            for (var fd in _self.terminals) {
+                var el = _self.terminals[fd].element;
+                if (el.parentNode && el.offsetHeight)
+                    _self.terminals[fd].onResize();
+            }
         });
 
         barTerminal.addEventListener("prop.blinking", function(e){
@@ -424,12 +382,12 @@ module.exports = ext.register("ext/terminal/terminal", {
         barTerminal.addEventListener("prop.fontfamily", function(e){
             apf.setStyleRule(".c9terminal .c9terminalcontainer .terminal",
                 "font-family",
-                e.value || "Ubuntu Mono, Monaco, Menlo, Consolas, monospace");
+                e.value || "Ubuntu Mono, Monaco, Menlo, Consolas, monospace")
         });
         barTerminal.addEventListener("prop.fontsize", function(e){
             apf.setStyleRule(".c9terminal .c9terminalcontainer .terminal",
                 "font-size",
-                e.value ? e.value + "px" : "10px");
+                e.value ? e.value + "px" : "10px")
         });
         barTerminal.addEventListener("prop.scrollback", function(e){
             Terminal.scrollback = parseInt(e.value) || 1000;
@@ -444,13 +402,23 @@ module.exports = ext.register("ext/terminal/terminal", {
                 });
             }
         });
+        
+        if(ide.connected){
+            for (var fd in _self.terminals) {
+                ide.send({
+                    command: "ttyPing",
+                    fd: fd
+                });
+            }
+        }
+        
     },
     
     openNewTerminal: function(){
         editors.gotoDocument({
             path: "Terminal" + ++this.counter + ".#!terminal",
             type: "nofile"
-        });
+        })
     },
     
     // Serialize a callback
@@ -474,7 +442,7 @@ module.exports = ext.register("ext/terminal/terminal", {
     ttyData: function(message) {
         var term = this.terminals[message.fd];
         if (term) {
-            term.$monitor.onData(message.data);
+            //term.$monitor.onData(message.data);
             term.write(message.data);
         }
     },
@@ -491,16 +459,13 @@ module.exports = ext.register("ext/terminal/terminal", {
     // []
     ttyGone : function(message){
         var term = this.terminals[message.fd];
-        if (term) {
-            delete term.fd;
-            delete this.terminals[message.fd];
+        if (term)
             this.restart(term);
-        }
     },
 
     newTab: function (callback, fd) {
         var _self = this;
-        var terminal = new Aceterm(80, 24, function(data) {
+        var terminal = new Terminal(80, 24, function(data) {
             if (!terminal.fd || terminal.reconnecting || terminal.terminated) {
                 console.warn("Dropping input", data);
                 return;
@@ -511,8 +476,6 @@ module.exports = ext.register("ext/terminal/terminal", {
                 data: data
             });
         });
-        
-        terminal.aceSession.resize = terminal.onResize.bind(terminal);
 
         var cb = function(err, message) {
             if (err)
@@ -532,15 +495,8 @@ module.exports = ext.register("ext/terminal/terminal", {
             });
         }
         else {
-            ide.send({
-                command: "ttyPing",
-                fd: fd
-            });
-            
             cb(null, {fd: fd});
         }
-        
-        return terminal;
     },
 
     restart : function(terminal){
@@ -559,8 +515,6 @@ module.exports = ext.register("ext/terminal/terminal", {
             if (err) {
                 terminal.writeln(" Failed.");
                 terminal.terminated = true;
-                terminal.fd = "";
-                terminal.onFdUpdate && terminal.onFdUpdate();
                 return;
             }
 
@@ -571,8 +525,6 @@ module.exports = ext.register("ext/terminal/terminal", {
 
             terminal.fd = message.fd;
             _self.terminals[message.fd] = terminal;
-            
-            terminal.onFdUpdate && terminal.onFdUpdate();
         };
 
         var reqId = this.request(cb);
