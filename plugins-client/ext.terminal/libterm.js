@@ -2040,6 +2040,8 @@ Terminal.prototype.keyDown = function(ev) {
     case 86: case 67:
       // We're ignoring these keys, because they will have been handled by the IDE's copy and/or paste
       if ((!isMac && ev.ctrlKey) || (isMac && ev.metaKey)) {
+          if(this.lastKey === ev.keyCode)
+            defaultHandle();
         break;
       }
       defaultHandle();
