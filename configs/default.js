@@ -29,6 +29,7 @@ var debugPort = argv.b || process.env.DEBUG_PORT || 5858;
 
 var useAuth = argv.username && argv.password;
 
+var clientPlugins;
 var config = [
     {
         packagePath: "./connect",
@@ -75,8 +76,7 @@ var config = [
         ],
         packed: false,
         packedName: "",
-        clientPlugins: [
-            "ext/terminal/terminal",
+        clientPlugins: clientPlugins = [
             "ext/filesystem/filesystem",
             "ext/settings/settings",
             "ext/editors/editors",
@@ -155,10 +155,6 @@ var config = [
     }, {
         packagePath: "vfs-architect/local",
         root: "/"
-    }, {
-        packagePath: "./cloud9.ide.terminal",
-        isSSL : false,
-        cwd:projectDir
     }, {
         packagePath: "vfs-architect/http-adapter",
         mount: vfsUrl,
@@ -239,6 +235,21 @@ if (useAuth) {
         username: argv.username,
         password: argv.password
     });
+}
+
+var hasPTYJS = true;
+try {
+    //test for pty.js
+    require.resolve("pty.js");
+} catch(e) {
+    hasPTYJS = false
+}
+if(hasPTYJS){
+    clientPlugins.push("ext/terminal/terminal")
+    config.push({
+        packagePath: "./cloud9.ide.terminal",
+        cwd:projectDir
+    })
 }
 
 module.exports = config;

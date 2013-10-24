@@ -42,8 +42,7 @@
         "ace":          "https://github.com/ajaxorg/ace/tarball/cacd51e2fe911971428dd40d9b09ba3c913a7ed5",
         "asyncjs":      "https://github.com/ajaxorg/async.js/tarball/bd936c60bb87c58052bcc0307f4e637bd35c908f",
         "v8debug":      "https://github.com/ajaxorg/lib-v8debug/tarball/d2fac9b09724cb2e75e2807191eace9bc27d3b52",
-        "treehugger":   "https://github.com/ajaxorg/treehugger/tarball/c6fb8e8c7ad7654577e1f843559fb91e925a3b79",
-        "pty.js":       "0.1.2"
+        "treehugger":   "https://github.com/ajaxorg/treehugger/tarball/c6fb8e8c7ad7654577e1f843559fb91e925a3b79"
     },
 
     "devDependencies": {
