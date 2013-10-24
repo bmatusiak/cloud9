@@ -76,6 +76,7 @@ var config = [
         packed: false,
         packedName: "",
         clientPlugins: [
+            "ext/terminal/terminal",
             "ext/filesystem/filesystem",
             "ext/settings/settings",
             "ext/editors/editors",
@@ -154,6 +155,10 @@ var config = [
     }, {
         packagePath: "vfs-architect/local",
         root: "/"
+    }, {
+        packagePath: "./cloud9.ide.terminal",
+        isSSL : false,
+        cwd:projectDir
     }, {
         packagePath: "vfs-architect/http-adapter",
         mount: vfsUrl,
