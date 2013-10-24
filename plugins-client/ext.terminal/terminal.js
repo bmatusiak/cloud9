@@ -13,7 +13,6 @@ var util = require("core/util");
 var markup = require("text!ext/terminal/terminal.xml");
 var editors = require("ext/editors/editors");
 var Terminal = require("ext/terminal/libterm");
-//var Monitor = require("ext/terminal/monitor");
 var commands = require("ext/commands/commands");
 var menus = require("ext/menus/menus");
 var settings = require("ext/settings/settings");
@@ -22,6 +21,7 @@ var markupSettings = require("text!ext/terminal/settings.xml");
 //require console since we use the a:hbox(cliBox) to append the terminal button
 require("ext/console/console");
 
+/* globals barTerminal,tabEditors,cliBox,btnCollapseConsole */
 Terminal.bindKeys = function() {
     if (Terminal.keysAreBound) return;
     Terminal.keysAreBound = true;
@@ -164,8 +164,7 @@ module.exports = ext.register("ext/terminal/terminal", {
                 terminal.container = this.container;
                 _self.container.appendChild(terminal.element);
                 terminal.onResize();
-                //terminal.$monitor = new Monitor(terminal);
-
+                
                 var cb = function(){
                     if (doc.state) {
                         barTerminal.lastWidth = barTerminal.getWidth();
@@ -219,7 +218,7 @@ module.exports = ext.register("ext/terminal/terminal", {
                     onclick : function(){
                         tabEditors.set(doc.getNode().getAttribute("path"));
                     }
-                }), 300)
+                }), 300);
 
                 terminal.on("title", function(title){
                     apf.xmldb.setAttribute(doc.getNode(), "name", title);
@@ -382,12 +381,12 @@ module.exports = ext.register("ext/terminal/terminal", {
         barTerminal.addEventListener("prop.fontfamily", function(e){
             apf.setStyleRule(".c9terminal .c9terminalcontainer .terminal",
                 "font-family",
-                e.value || "Ubuntu Mono, Monaco, Menlo, Consolas, monospace")
+                e.value || "Ubuntu Mono, Monaco, Menlo, Consolas, monospace");
         });
         barTerminal.addEventListener("prop.fontsize", function(e){
             apf.setStyleRule(".c9terminal .c9terminalcontainer .terminal",
                 "font-size",
-                e.value ? e.value + "px" : "10px")
+                e.value ? e.value + "px" : "10px");
         });
         barTerminal.addEventListener("prop.scrollback", function(e){
             Terminal.scrollback = parseInt(e.value) || 1000;
@@ -416,9 +415,9 @@ module.exports = ext.register("ext/terminal/terminal", {
     
     openNewTerminal: function(){
         editors.gotoDocument({
-            path: "Terminal" + ++this.counter + ".#!terminal",
+            path: "Terminal" + (++this.counter) + ".#!terminal",
             type: "nofile"
-        })
+        });
     },
     
     // Serialize a callback
@@ -442,7 +441,6 @@ module.exports = ext.register("ext/terminal/terminal", {
     ttyData: function(message) {
         var term = this.terminals[message.fd];
         if (term) {
-            //term.$monitor.onData(message.data);
             term.write(message.data);
         }
     },
