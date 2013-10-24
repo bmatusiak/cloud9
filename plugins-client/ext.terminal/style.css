@@ -1,6 +1,6 @@
 .c9terminal{
     background-color : #eee;
-    padding : 6px;
+    margin : 6px;
 }
 
 .c9terminal .c9terminalcontainer{
@@ -16,9 +16,10 @@
     font-family : Monaco, Ubuntu Mono, Menlo, Consolas, monospace;
     font-size : 12px;
     display: inline-block;
+    -webkit-font-smoothing: antialiased;
 }
 
-.c9terminal .c9terminalcontainer .terminal>div{
+.c9terminal .c9terminalcontainer .terminal > div {
     white-space: nowrap;
 }
 .c9terminal .c9terminalcontainer .terminal .reverse-video {
@@ -29,4 +30,11 @@
     background-color: #f0f0f0;
     color: #000;
     outline: none;
+}
+
+.c9terminal .c9terminalcontainer .terminal .ace_selection {
+    background-color: rgb(81,93,119);
+}
+.terminal .ace_selected-word {
+    border: solid 1px rgb(81,93,119);
 }

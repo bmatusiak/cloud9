@@ -1,25 +1,4 @@
 /**
- * tty.js - an xterm emulator
- * Christopher Jeffrey (https://github.com/chjj/tty.js)
- *
- * Originally forked from (with the author's permission):
- *
- * Fabrice Bellard's javascript vt100 for jslinux:
- * http://bellard.org/jslinux/
- * Copyright (c) 2011 Fabrice Bellard
- * (Redistribution or commercial use is prohibited
- *  without the author's permission.)
- *
- * The original design remains. The terminal itself
- * has been extended to include xterm CSI codes, among
- * other features.
-*/
-
-define(function(require, exports, module) {
-
-;(function() {
-
-/**
  * Terminal Emulation References:
  *   http://vt100.net/
  *   http://invisible-island.net/xterm/ctlseqs/ctlseqs.txt
@@ -29,70 +8,13 @@ define(function(require, exports, module) {
  *   http://linux.die.net/man/4/console_codes
  *   http://linux.die.net/man/7/urxvt
  */
-
-'use strict';
-
-/**
- * Shared
- */
-
-var window = this
-  , document = this.document;
-
-/**
- * EventEmitter
- */
-
-function EventEmitter() {}
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  this._events = this._events || {};
-  this._events[type] = this._events[type] || [];
-  this._events[type].push(listener);
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.removeListener = function(type, listener) {
-  if (!this._events || !this._events[type]) return;
-
-  var obj = this._events[type]
-    , i = obj.length;
-
-  while (i--) {
-    if (obj[i] === listener) {
-      obj.splice(i, 1);
-      return;
-    }
-  }
-};
-
-EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  this.on(type, function on() {
-    var args = Array.prototype.slice.call(arguments);
-    this.removeListener(type, on);
-    return listener.apply(this, args);
-  });
-};
-
-EventEmitter.prototype.emit = function(type) {
-  if (!this._events || !this._events[type]) return;
-
-  var args = Array.prototype.slice.call(arguments, 1)
-    , obj = this._events[type]
-    , l = obj.length
-    , i = 0;
-
-  for (; i < l; i++) {
-    obj[i].apply(this, args);
-  }
-};
-
+ 
+define(function(require, exports, module) {
 /**
  * States
  */
+
+var EventEmitter = require("smith/events-amd").EventEmitter;
 
 var normal = 0
   , escaped = 1
@@ -107,19 +29,17 @@ var normal = 0
  */
 
 function Terminal(cols, rows, handler) {
-  EventEmitter.call(this);
-
   this.cols = cols || Terminal.geometry[0];
   this.rows = rows || Terminal.geometry[1];
 
   //if (handler) this.handler = handler;
-  if (handler) this.on('data', handler);
+  if (handler) this.on('input', handler);
 
   this.ybase = 0;
   this.ydisp = 0;
   this.x = 0;
   this.y = 0;
-  this.cursorState = 0;
+  this.cursorState = 1;
   this.cursorHidden = false;
   this.convertEol = false;
   this.state = 0;
@@ -154,7 +74,6 @@ function Terminal(cols, rows, handler) {
 
   // misc
   this.element;
-  this.children;
   this.refreshStart;
   this.refreshEnd;
   this.savedX;
@@ -173,7 +92,7 @@ function Terminal(cols, rows, handler) {
   this.prefix = '';
   this.postfix = '';
 
-  this.lines = [];
+  this.lines = []; //TODO optimize lines
   var i = this.rows;
   while (i--) {
     this.lines.push(this.blankLine());
@@ -183,75 +102,11 @@ function Terminal(cols, rows, handler) {
   this.setupStops();
 }
 
-inherits(Terminal, EventEmitter);
+Terminal.prototype = new EventEmitter();
 
-/**
- * Colors
- */
-
-// Colors 0-15
-Terminal.colors = [
-  // dark:
-  '#2e3436',
-  '#cc0000',
-  '#4e9a06',
-  '#c4a000',
-  '#3465a4',
-  '#75507b',
-  '#06989a',
-  '#d3d7cf',
-  // bright:
-  '#555753',
-  '#ef2929',
-  '#8ae234',
-  '#fce94f',
-  '#729fcf',
-  '#ad7fa8',
-  '#34e2e2',
-  '#eeeeec'
-];
-
-// Colors 16-255
-// Much thanks to TooTallNate for writing this.
-Terminal.colors = (function() {
-  var colors = Terminal.colors
-    , r = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff]
-    , i;
-
-  // 16-231
-  i = 0;
-  for (; i < 216; i++) {
-    out(r[(i / 36) % 6 | 0], r[(i / 6) % 6 | 0], r[i % 6]);
-  }
-
-  // 232-255 (grey)
-  i = 0;
-  for (; i < 24; i++) {
-    r = 8 + i * 10;
-    out(r, r, r);
-  }
-
-  function out(r, g, b) {
-    colors.push('#' + hex(r) + hex(g) + hex(b));
-  }
-
-  function hex(c) {
-    c = c.toString(16);
-    return c.length < 2 ? '0' + c : c;
-  }
-
-  return colors;
-})();
-
-// Default BG/FG
-Terminal.defaultColors = {
-  bg: '#000000',
-  fg: '#f0f0f0'
-};
-
-Terminal.colors[256] = Terminal.defaultColors.bg;
-Terminal.colors[257] = Terminal.defaultColors.fg;
-
+Terminal.colors = [];
+Terminal.setColors = require("./term_colors");
+Terminal.setColors();
 /**
  * Options
  */
@@ -266,458 +121,24 @@ Terminal.screenKeys = false;
 Terminal.programFeatures = false;
 Terminal.debug = false;
 
-/**
- * Focused Terminal
- */
 
-Terminal.focus = null;
-
-Terminal.prototype.focus = function() {
+Terminal.prototype.focus = function() { // TODO is sendFocus needed?
   if (Terminal.focus === this) return;
   if (Terminal.focus) {
     Terminal.focus.cursorState = 0;
-    Terminal.focus.refresh(Terminal.focus.y, Terminal.focus.y);
     if (Terminal.focus.sendFocus) Terminal.focus.send('\x1b[O');
   }
-  Terminal.focus = this;
   if (this.sendFocus) this.send('\x1b[I');
-  this.showCursor();
 };
 
-/**
- * Global Events for key handling
- */
-
-Terminal.bindKeys = function() {
-  if (Terminal.focus) return;
-
-  // We could put an "if (Terminal.focus)" check
-  // here, but it shouldn't be necessary.
-  on(document, 'keydown', function(ev) {
-    return Terminal.focus.keyDown(ev);
-  }, true);
-
-  on(document, 'keypress', function(ev) {
-    return Terminal.focus.keyPress(ev);
-  }, true);
-};
 
 /**
  * Open Terminal
  */
 
 Terminal.prototype.open = function() {
-  var self = this
-    , i = 0
-    , div;
-
-  this.element = document.createElement('div');
-  this.element.className = 'terminal';
-  this.children = [];
-
-  for (; i < this.rows; i++) {
-    div = document.createElement('div');
-    this.element.appendChild(div);
-    this.children.push(div);
-  }
-
-  document.body.appendChild(this.element);
-
-  this.refresh(0, this.rows - 1);
-
-  Terminal.bindKeys();
-  this.focus();
-
-  this.startBlink();
-
-  on(this.element, 'mousedown', function() {
-    self.focus();
-  });
-
-  // This probably shouldn't work,
-  // ... but it does. Firefox's paste
-  // event seems to only work for textareas?
-  on(this.element, 'mousedown', function(ev) {
-    var button = ev.button != null
-      ? +ev.button
-      : ev.which != null
-        ? ev.which - 1
-        : null;
-
-    // Does IE9 do this?
-    if (~navigator.userAgent.indexOf('MSIE')) {
-      button = button === 1 ? 0 : button === 4 ? 1 : button;
-    }
-
-    if (button !== 2) return;
-
-    self.element.contentEditable = 'true';
-    setTimeout(function() {
-      self.element.contentEditable = 'inherit'; // 'false';
-    }, 1);
-  }, true);
-
-  on(this.element, 'paste', function(ev) {
-    self.paste(ev);
-  });
-
-  this.bindMouse();
-
-  // XXX - hack, move this somewhere else.
-  if (Terminal.brokenBold == null) {
-    Terminal.brokenBold = isBoldBroken();
-  }
-
-  // sync default bg/fg colors
-  this.element.style.backgroundColor = Terminal.defaultColors.bg;
-  this.element.style.color = Terminal.defaultColors.fg;
-
-  //this.emit('open');
 };
 
-Terminal.prototype.paste = function(ev) {
-    if (ev.clipboardData) {
-        this.send(ev.clipboardData.getData('text/plain'));
-    }
-    else if (window.clipboardData) {
-        this.send(window.clipboardData.getData('Text'));
-    }
-    // Not necessary. Do it anyway for good measure.
-    this.element.contentEditable = 'inherit';
-    return cancel(ev);
-};
-
-// XTerm mouse events
-// http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#Mouse%20Tracking
-// To better understand these
-// the xterm code is very helpful:
-// Relevant files:
-//   button.c, charproc.c, misc.c
-// Relevant functions in xterm/button.c:
-//   BtnCode, EmitButtonCode, EditorButton, SendMousePosition
-Terminal.prototype.bindMouse = function() {
-  var el = this.element
-    , self = this
-    , pressed = 32;
-
-  var wheelEvent = 'onmousewheel' in el
-    ? 'mousewheel'
-    : 'DOMMouseScroll';
-
-  // mouseup, mousedown, mousewheel
-  // left click: ^[[M 3<^[[M#3<
-  // mousewheel up: ^[[M`3>
-  function sendButton(ev) {
-    var button
-      , pos;
-
-    // get the xterm-style button
-    button = getButton(ev);
-
-    // get mouse coordinates
-    pos = getCoords(ev);
-    if (!pos) return;
-
-    sendEvent(button, pos);
-
-    switch (ev.type) {
-      case 'mousedown':
-        pressed = button;
-        break;
-      case 'mouseup':
-        // keep it at the left
-        // button, just in case.
-        pressed = 32;
-        break;
-      case wheelEvent:
-        // nothing. don't
-        // interfere with
-        // `pressed`.
-        break;
-    }
-  }
-
-  // motion example of a left click:
-  // ^[[M 3<^[[M@4<^[[M@5<^[[M@6<^[[M@7<^[[M#7<
-  function sendMove(ev) {
-    var button = pressed
-      , pos;
-
-    pos = getCoords(ev);
-    if (!pos) return;
-
-    // buttons marked as motions
-    // are incremented by 32
-    button += 32;
-
-    sendEvent(button, pos);
-  }
-
-  // encode button and
-  // position to characters
-  function encode(data, ch) {
-    if (!self.utfMouse) {
-      if (ch === 255) return data.push(0);
-      if (ch > 127) ch = 127;
-      data.push(ch);
-    } else {
-      if (ch === 2047) return data.push(0);
-      if (ch < 127) {
-        data.push(ch);
-      } else {
-        if (ch > 2047) ch = 2047;
-        data.push(0xC0 | (ch >> 6));
-        data.push(0x80 | (ch & 0x3F));
-      }
-    }
-  }
-
-  // send a mouse event:
-  // regular/utf8: ^[[M Cb Cx Cy
-  // urxvt: ^[[ Cb ; Cx ; Cy M
-  // sgr: ^[[ Cb ; Cx ; Cy M/m
-  // vt300: ^[[ 24(1/3/5)~ [ Cx , Cy ] \r
-  // locator: CSI P e ; P b ; P r ; P c ; P p & w
-  function sendEvent(button, pos) {
-    // self.emit('mouse', {
-    //   x: pos.x - 32,
-    //   y: pos.x - 32,
-    //   button: button
-    // });
-
-    if (self.vt300Mouse) {
-      // NOTE: Unstable.
-      // http://www.vt100.net/docs/vt3xx-gp/chapter15.html
-      button &= 3;
-      pos.x -= 32;
-      pos.y -= 32;
-      var data = '\x1b[24';
-      if (button === 0) data += '1';
-      else if (button === 1) data += '3';
-      else if (button === 2) data += '5';
-      else if (button === 3) return;
-      else data += '0';
-      data += '~[' + pos.x + ',' + pos.y + ']\r';
-      self.send(data);
-      return;
-    }
-
-    if (self.decLocator) {
-      // NOTE: Unstable.
-      button &= 3;
-      pos.x -= 32;
-      pos.y -= 32;
-      if (button === 0) button = 2;
-      else if (button === 1) button = 4;
-      else if (button === 2) button = 6;
-      else if (button === 3) button = 3;
-      self.send('\x1b['
-        + button
-        + ';'
-        + (button === 3 ? 4 : 0)
-        + ';'
-        + pos.y
-        + ';'
-        + pos.x
-        + ';'
-        + (pos.page || 0)
-        + '&w');
-      return;
-    }
-
-    if (self.urxvtMouse) {
-      pos.x -= 32;
-      pos.y -= 32;
-      pos.x++;
-      pos.y++;
-      self.send('\x1b[' + button + ';' + pos.x + ';' + pos.y + 'M');
-      return;
-    }
-
-    if (self.sgrMouse) {
-      pos.x -= 32;
-      pos.y -= 32;
-      self.send('\x1b[<'
-        + ((button & 3) === 3 ? button & ~3 : button)
-        + ';'
-        + pos.x
-        + ';'
-        + pos.y
-        + ((button & 3) === 3 ? 'm' : 'M'));
-      return;
-    }
-
-    var data = [];
-
-    encode(data, button);
-    encode(data, pos.x);
-    encode(data, pos.y);
-
-    self.send('\x1b[M' + String.fromCharCode.apply(String, data));
-  }
-
-  function getButton(ev) {
-    var button
-      , shift
-      , meta
-      , ctrl
-      , mod;
-
-    // two low bits:
-    // 0 = left
-    // 1 = middle
-    // 2 = right
-    // 3 = release
-    // wheel up/down:
-    // 1, and 2 - with 64 added
-    switch (ev.type) {
-      case 'mousedown':
-        button = ev.button != null
-          ? +ev.button
-          : ev.which != null
-            ? ev.which - 1
-            : null;
-
-        if (~navigator.userAgent.indexOf('MSIE')) {
-          button = button === 1 ? 0 : button === 4 ? 1 : button;
-        }
-        break;
-      case 'mouseup':
-        button = 3;
-        break;
-      case 'DOMMouseScroll':
-        button = ev.detail < 0
-          ? 64
-          : 65;
-        break;
-      case 'mousewheel':
-        button = ev.wheelDeltaY > 0
-          ? 64
-          : 65;
-        break;
-    }
-
-    // next three bits are the modifiers:
-    // 4 = shift, 8 = meta, 16 = control
-    shift = ev.shiftKey ? 4 : 0;
-    meta = ev.metaKey ? 8 : 0;
-    ctrl = ev.ctrlKey ? 16 : 0;
-    mod = shift | meta | ctrl;
-
-    // no mods
-    if (self.vt200Mouse) {
-      // ctrl only
-      mod &= ctrl;
-    } else if (!self.normalMouse) {
-      mod = 0;
-    }
-
-    // increment to SP
-    button = (32 + (mod << 2)) + button;
-
-    return button;
-  }
-
-  // mouse coordinates measured in cols/rows
-  function getCoords(ev) {
-    var x, y, w, h, el;
-
-    // ignore browsers without pageX for now
-    if (ev.pageX == null) return;
-
-    x = ev.pageX;
-    y = ev.pageY;
-    el = self.element;
-
-    // should probably check offsetParent
-    // but this is more portable
-    while (el !== document.documentElement) {
-      x -= el.offsetLeft;
-      y -= el.offsetTop;
-      el = el.parentNode;
-    }
-
-    // convert to cols/rows
-    w = self.element.clientWidth;
-    h = self.element.clientHeight;
-    x = ((x / w) * self.cols) | 0;
-    y = ((y / h) * self.rows) | 0;
-
-    // be sure to avoid sending
-    // bad positions to the program
-    if (x < 0) x = 0;
-    if (x > self.cols) x = self.cols;
-    if (y < 0) y = 0;
-    if (y > self.rows) y = self.rows;
-
-    // xterm sends raw bytes and
-    // starts at 32 (SP) for each.
-    x += 32;
-    y += 32;
-
-    return {
-      x: x,
-      y: y,
-      down: ev.type === 'mousedown',
-      up: ev.type === 'mouseup',
-      wheel: ev.type === wheelEvent,
-      move: ev.type === 'mousemove'
-    };
-  }
-
-  on(el, 'mousedown', function(ev) {
-    if (!self.mouseEvents) return;
-
-    // send the button
-    sendButton(ev);
-
-    // ensure focus
-    self.focus();
-
-    // fix for odd bug
-    if (self.vt200Mouse) {
-      sendButton({ __proto__: ev, type: 'mouseup' });
-      return cancel(ev);
-    }
-
-    // bind events
-    if (self.normalMouse) on(document, 'mousemove', sendMove);
-
-    // x10 compatibility mode can't send button releases
-    if (!self.x10Mouse) {
-      on(document, 'mouseup', function up(ev) {
-        sendButton(ev);
-        if (self.normalMouse) off(document, 'mousemove', sendMove);
-        off(document, 'mouseup', up);
-        return cancel(ev);
-      });
-    }
-
-    return cancel(ev);
-  });
-
-  on(el, wheelEvent, function(ev) {
-    if (!self.mouseEvents) return;
-    if (self.x10Mouse
-        || self.vt300Mouse
-        || self.decLocator) return;
-    sendButton(ev);
-    return cancel(ev);
-  });
-
-  // allow mousewheel scrolling in
-  // the shell for example
-  on(el, wheelEvent, function(ev) {
-    if (self.mouseEvents) return;
-    if (self.applicationKeypad) return;
-    if (ev.type === 'DOMMouseScroll') {
-      self.scrollDisp(ev.detail < 0 ? -5 : 5);
-    } else {
-      self.scrollDisp(ev.wheelDeltaY > 0 ? -5 : 5);
-    }
-    return cancel(ev);
-  });
-};
 
 /**
  * Destroy Terminal
@@ -746,139 +167,18 @@ Terminal.prototype.destroy = function() {
 // Next 14 bits: a mask for misc. flags:
 //   1=bold, 2=underline, 4=inverse
 
-Terminal.prototype.refresh = function(start, end) {
-  var x
-    , y
-    , i
-    , line
-    , out
-    , ch
-    , width
-    , data
-    , attr
-    , fgColor
-    , bgColor
-    , flags
-    , row
-    , parent;
-
-  if (end - start >= this.rows / 2) {
-    parent = this.element.parentNode;
-    if (parent) parent.removeChild(this.element);
-  }
-
-  width = this.cols;
-  y = start;
-
-  for (; y <= end; y++) {
-    row = y + this.ydisp;
-
-    line = this.lines[row];
-    out = '';
-
-    if (y === this.y
-        && this.cursorState
-        && this.ydisp === this.ybase
-        && !this.cursorHidden) {
-      x = this.x;
-    } else {
-      x = -1;
-    }
-
-    attr = this.defAttr;
-    i = 0;
-
-    for (; i < width; i++) {
-      data = line[i][0];
-      ch = line[i][1];
-
-      if (i === x) data = -1;
-
-      if (data !== attr) {
-        if (attr !== this.defAttr) {
-          out += '</span>';
-        }
-        if (data !== this.defAttr) {
-          if (data === -1) {
-            out += '<span class="reverse-video">';
-          } else {
-            out += '<span style="';
-
-            bgColor = data & 0x1ff;
-            fgColor = (data >> 9) & 0x1ff;
-            flags = data >> 18;
-
-            if (flags & 1) {
-              if (!Terminal.brokenBold) {
-                out += 'font-weight:bold;';
-              }
-              // see: XTerm*boldColors
-              if (fgColor < 8) fgColor += 8;
-            }
-
-            if (flags & 2) {
-              out += 'text-decoration:underline;';
-            }
-
-            if (bgColor !== 256) {
-              out += 'background-color:'
-                + Terminal.colors[bgColor]
-                + ';';
-            }
-
-            if (fgColor !== 257) {
-              out += 'color:'
-                + Terminal.colors[fgColor]
-                + ';';
-            }
-
-            out += '">';
-          }
-        }
-      }
-
-      switch (ch) {
-        case '&':
-          out += '&amp;';
-          break;
-        case '<':
-          out += '&lt;';
-          break;
-        case '>':
-          out += '&gt;';
-          break;
-        default:
-          if (ch <= ' ') {
-            out += '&nbsp;';
-          } else {
-            out += ch;
-          }
-          break;
-      }
-
-      attr = data;
-    }
-
-    if (attr !== this.defAttr) {
-      out += '</span>';
-    }
-
-    this.children[y].innerHTML = out;
-  }
-
-  if (parent) parent.appendChild(this.element);
+Terminal.prototype.refresh = function(start, end) {//TODO optimize lines
+  
 };
 
 Terminal.prototype.cursorBlink = function() {
-  if (Terminal.focus !== this || !Terminal.cursorBlink) return;
+  if (Terminal.focus !== this || !Terminal.cursorBlink || Terminal.mousePressed) return;
   this.cursorState ^= 1;
-  this.refresh(this.y, this.y);
 };
 
 Terminal.prototype.showCursor = function() {
   if (!this.cursorState) {
     this.cursorState = 1;
-    this.refresh(this.y, this.y);
   } else {
     // Temporarily disabled:
     // this.refreshBlink();
@@ -900,7 +200,7 @@ Terminal.prototype.refreshBlink = function() {
   this._blink = setInterval(this._blinker, 500);
 };
 
-Terminal.prototype.clear = function() {
+Terminal.prototype.clear = function() {//TODO optimize lines
   this.lines.splice(0, this.ybase + this.y);
   this.lines.splice(1, this.lines.length-1);
   while (this.lines.length < this.rows) {
@@ -910,9 +210,9 @@ Terminal.prototype.clear = function() {
   this.ybase = 0;
   this.ydisp = 0;
   this.refresh(0, this.rows - 1);
-}
+};
 
-Terminal.prototype.scroll = function() {
+Terminal.prototype.scroll = function() {//TODO optimize lines
   var row;
 
   if (++this.ybase === Terminal.scrollback) {
@@ -964,7 +264,7 @@ Terminal.prototype.scrollDisp = function(disp) {
   this.refresh(0, this.rows - 1);
 };
 
-Terminal.prototype.write = function(data) {
+Terminal.prototype.write = function(data) {//TODO optimize lines
   var l = data.length
     , i = 0
     , ch;
@@ -1048,6 +348,10 @@ Terminal.prototype.write = function(data) {
                 ch = this.charset[ch];
               }
               if (this.x >= this.cols) {
+                  var line = this.lines[this.y + this.ybase];
+                  if (line)
+                      line.wrapped = true;
+
                 this.x = 0;
                 this.y++;
                 if (this.y > this.scrollBottom) {
@@ -1055,7 +359,20 @@ Terminal.prototype.write = function(data) {
                   this.scroll();
                 }
               }
-              this.lines[this.y + this.ybase][this.x] = [this.curAttr, ch];
+              
+              var insertY = this.y + this.ybase;
+              if (!this.lines[insertY]) {
+                // TODO figure out why does this happen during resizing
+                this.log("libterm error attempting to insert into "
+                  + insertY + " " + this.lines.length);
+                insertY = this.lines.length - 1;
+              }
+              
+              if (!this.insertMode)
+                this.lines[insertY][this.x] = [this.curAttr, ch];
+              else
+                this.lines[insertY].splice(this.x, 0, [this.curAttr, ch]);
+
               this.x++;
               this.updateRange(this.y);
             }
@@ -1870,240 +1187,7 @@ Terminal.prototype.writeln = function(data) {
   this.write(data + '\r\n');
 };
 
-Terminal.prototype.keyDown = function(ev) {
-  var key, defaultKeys;
-  
-  switch (ev.keyCode) {
-    // backspace
-    case 8:
-      if (ev.shiftKey) {
-        key = '\x08'; // ^H
-        break;
-      }
-      key = '\x7f'; // ^?
-      break;
-    // tab
-    case 9:
-      if (ev.altKey) {
-        defaultKeys = true;
-        break;
-      }
-        
-      if (ev.shiftKey) {
-        key = '\x1b[Z';
-        break;
-      }
-      key = '\t';
-      break;
-    // return/enter
-    case 13:
-      key = '\r';
-      break;
-    // escape
-    case 27:
-      key = '\x1b';
-      break;
-    // left-arrow
-    case 37:
-      if (this.applicationKeypad) {
-        key = '\x1bOD'; // SS3 as ^[O for 7-bit
-        //key = '\x8fD'; // SS3 as 0x8f for 8-bit
-        break;
-      }
-      key = '\x1b[D';
-      break;
-    // right-arrow
-    case 39:
-      if (this.applicationKeypad) {
-        key = '\x1bOC';
-        break;
-      }
-      key = '\x1b[C';
-      break;
-    // up-arrow
-    case 38:
-      if (this.applicationKeypad) {
-        key = '\x1bOA';
-        break;
-      }
-      if (ev.ctrlKey) {
-        this.scrollDisp(-1);
-        return cancel(ev);
-      } else {
-        key = '\x1b[A';
-      }
-      break;
-    // down-arrow
-    case 40:
-      if (this.applicationKeypad) {
-        key = '\x1bOB';
-        break;
-      }
-      if (ev.ctrlKey) {
-        this.scrollDisp(1);
-        return cancel(ev);
-      } else {
-        key = '\x1b[B';
-      }
-      break;
-    // delete
-    case 46:
-      key = '\x1b[3~';
-      break;
-    // insert
-    case 45:
-      key = '\x1b[2~';
-      break;
-    // home
-    case 36:
-      if (this.applicationKeypad) {
-        key = '\x1bOH';
-        break;
-      }
-      key = '\x1bOH';
-      break;
-    // end
-    case 35:
-      if (this.applicationKeypad) {
-        key = '\x1bOF';
-        break;
-      }
-      key = '\x1bOF';
-      break;
-    // page up
-    case 33:
-      if (ev.shiftKey) {
-        this.scrollDisp(-(this.rows - 1));
-        return cancel(ev);
-      } else {
-        key = '\x1b[5~';
-      }
-      break;
-    // page down
-    case 34:
-      if (ev.shiftKey) {
-        this.scrollDisp(this.rows - 1);
-        return cancel(ev);
-      } else {
-        key = '\x1b[6~';
-      }
-      break;
-    // F1
-    case 112:
-      key = '\x1bOP';
-      break;
-    // F2
-    case 113:
-      key = '\x1bOQ';
-      break;
-    // F3
-    case 114:
-      key = '\x1bOR';
-      break;
-    // F4
-    case 115:
-      key = '\x1bOS';
-      break;
-    // F5
-    case 116:
-      key = '\x1b[15~';
-      break;
-    // F6
-    case 117:
-      key = '\x1b[17~';
-      break;
-    // F7
-    case 118:
-      key = '\x1b[18~';
-      break;
-    // F8
-    case 119:
-      key = '\x1b[19~';
-      break;
-    // F9
-    case 120:
-      key = '\x1b[20~';
-      break;
-    // F10
-    case 121:
-      key = '\x1b[21~';
-      break;
-    // F11
-    case 122:
-      key = '\x1b[23~';
-      break;
-    // F12
-    case 123:
-      key = '\x1b[24~';
-      break;
-     // Cmd-V/Ctrl-V and Cmd-C/Ctrl-C
-    case 86: case 67:
-      // We're ignoring these keys, because they will have been handled by the IDE's copy and/or paste
-      if ((!isMac && ev.ctrlKey) || (isMac && ev.metaKey)) {
-        break;
-      }
-      defaultHandle();
-      break;
-    // CTRL-K
-    case 75:
-      if ((!isMac && ev.ctrlKey && !ev.shiftKey && !ev.altKey) || (isMac && ev.metaKey)) {
-        this.clear();
-        return cancel(ev);
-      }
-      defaultHandle();
-      break;
-    default:
-      defaultHandle();
-      break;
-  }
-  
-  function defaultHandle() {
-      defaultKeys = true;
-    
-      // a-z and space
-      if (ev.ctrlKey) {
-        if (ev.keyCode >= 65 && ev.keyCode <= 90) {
-          key = String.fromCharCode(ev.keyCode - 64);
-        } else if (ev.keyCode === 32) {
-          // NUL
-          key = String.fromCharCode(0);
-        } else if (ev.keyCode >= 51 && ev.keyCode <= 55) {
-          // escape, file sep, group sep, record sep, unit sep
-          key = String.fromCharCode(ev.keyCode - 51 + 27);
-        } else if (ev.keyCode === 56) {
-          // delete
-          key = String.fromCharCode(127);
-        } else if (ev.keyCode === 219) {
-          // ^[ - escape
-          key = String.fromCharCode(27);
-        } else if (ev.keyCode === 221) {
-          // ^] - group sep
-          key = String.fromCharCode(29);
-        }
-      } else if ((!isMac && ev.altKey) || (isMac && ev.metaKey)) {
-        if (ev.keyCode >= 65 && ev.keyCode <= 90) {
-          key = '\x1b' + String.fromCharCode(ev.keyCode + 32);
-        } else if (ev.keyCode === 192) {
-          key = '\x1b`';
-        } else if (ev.keyCode >= 48 && ev.keyCode <= 57) {
-          key = '\x1b' + (ev.keyCode - 48);
-        }
-      }
-  }
 
-  this.emit('keydown', ev);
-
-  if (key) {
-    this.emit('key', key, ev);
-
-    this.showCursor();
-    this.handler(key);
-
-    return defaultKeys ? false : cancel(ev);
-  }
-
-  return true;
-};
 
 Terminal.prototype.setgLevel = function(g) {
   this.glevel = g;
@@ -2117,33 +1201,7 @@ Terminal.prototype.setgCharset = function(g, charset) {
   }
 };
 
-Terminal.prototype.keyPress = function(ev) {
-  var key;
 
-  cancel(ev);
-
-  if (ev.charCode) {
-    key = ev.charCode;
-  } else if (ev.which == null) {
-    key = ev.keyCode;
-  } else if (ev.which !== 0 && ev.charCode !== 0) {
-    key = ev.which;
-  } else {
-    return false;
-  }
-
-  if (!key || ev.ctrlKey || ev.altKey || ev.metaKey) return false;
-
-  key = String.fromCharCode(key);
-
-  this.emit('keypress', key, ev);
-  this.emit('key', key, ev);
-
-  this.showCursor();
-  this.handler(key);
-
-  return false;
-};
 
 Terminal.prototype.send = function(data) {
   var self = this;
@@ -2182,12 +1240,8 @@ Terminal.prototype.error = function() {
   window.console.error.apply(window.console, args);
 };
 
-Terminal.prototype.resize = function(x, y) {
-  var line
-    , el
-    , i
-    , j
-    , ch;
+Terminal.prototype.resize = function(x, y) {//TODO optimize lines
+  var i, j, ch;
 
   if (x < 1) x = 1;
   if (y < 1) y = 1;
@@ -2195,7 +1249,7 @@ Terminal.prototype.resize = function(x, y) {
   // resize cols
   j = this.cols;
   if (j < x) {
-    ch = [this.defAttr, ' '];
+    ch = [this.defAttr, ''];
     i = this.lines.length;
     while (i--) {
       while (this.lines[i].length < x) {
@@ -2216,15 +1270,9 @@ Terminal.prototype.resize = function(x, y) {
   // resize rows
   j = this.rows;
   if (j < y) {
-    el = this.element;
     while (j++ < y) {
       if (this.lines.length < y + this.ybase) {
         this.lines.push(this.blankLine());
-      }
-      if (this.children.length < y) {
-        line = document.createElement('div');
-        el.appendChild(line);
-        this.children.push(line);
       }
     }
   } else if (j > y) {
@@ -2232,14 +1280,19 @@ Terminal.prototype.resize = function(x, y) {
       if (this.lines.length > y + this.ybase) {
         this.lines.pop();
       }
-      if (this.children.length > y) {
-        el = this.children.pop();
-        if (!el) continue;
-        el.parentNode.removeChild(el);
-      }
     }
   }
   this.rows = y;
+  
+  
+  var max = this.lines.length - this.rows;
+  for (var i = 0; i < max; i++) {
+      var line = this.lines[i];
+      if (line.some(function(x) {return x[1]}))
+        break;
+      this.lines.shift();
+      this.ybase --;
+  }
 
   // make sure the cursor stays on screen
   if (this.y >= y) this.y = y - 1;
@@ -2298,10 +1351,14 @@ Terminal.prototype.nextStop = function(x) {
     : x < 0 ? 0 : x;
 };
 
-Terminal.prototype.eraseRight = function(x, y) {
+Terminal.prototype.eraseRight = function(x, y) {//TODO optimize lines
   var line = this.lines[this.ybase + y]
-    , ch = [this.curAttr, ' ']; // xterm
-
+    , ch = [this.curAttr, '']; // xterm
+  if (!line) return;
+  
+  if (line.wrapped)
+    line.wrapped = false;
+  
   for (; x < this.cols; x++) {
     line[x] = ch;
   }
@@ -2309,9 +1366,9 @@ Terminal.prototype.eraseRight = function(x, y) {
   this.updateRange(y);
 };
 
-Terminal.prototype.eraseLeft = function(x, y) {
+Terminal.prototype.eraseLeft = function(x, y) {//TODO optimize lines
   var line = this.lines[this.ybase + y]
-    , ch = [this.curAttr, ' ']; // xterm
+    , ch = [this.curAttr, '']; // xterm
 
   x++;
   while (x--) line[x] = ch;
@@ -2328,7 +1385,7 @@ Terminal.prototype.blankLine = function(cur) {
     ? this.curAttr
     : this.defAttr;
 
-  var ch = [attr, ' ']
+  var ch = [attr, '']
     , line = []
     , i = 0;
 
@@ -2341,8 +1398,8 @@ Terminal.prototype.blankLine = function(cur) {
 
 Terminal.prototype.ch = function(cur) {
   return cur
-    ? [this.curAttr, ' ']
-    : [this.defAttr, ' '];
+    ? [this.curAttr, '']
+    : [this.defAttr, ''];
 };
 
 Terminal.prototype.is = function(term) {
@@ -2351,7 +1408,7 @@ Terminal.prototype.is = function(term) {
 };
 
 Terminal.prototype.handler = function(data) {
-  this.emit('data', data);
+  this.emit('input', data);
 };
 
 Terminal.prototype.handleTitle = function(title) {
@@ -2373,7 +1430,7 @@ Terminal.prototype.index = function() {
 };
 
 // ESC M Reverse Index (RI is 0x8d).
-Terminal.prototype.reverseIndex = function() {
+Terminal.prototype.reverseIndex = function() {//TODO optimize lines
   var j;
   this.y--;
   if (this.y < this.scrollTop) {
@@ -2754,7 +1811,7 @@ Terminal.prototype.deviceStatus = function(params) {
 
 // CSI Ps @
 // Insert Ps (Blank) Character(s) (default = 1) (ICH).
-Terminal.prototype.insertChars = function(params) {
+Terminal.prototype.insertChars = function(params) {//TODO optimize lines
   var param, row, j, ch;
 
   param = params[0];
@@ -2762,7 +1819,7 @@ Terminal.prototype.insertChars = function(params) {
 
   row = this.y + this.ybase;
   j = this.x;
-  ch = [this.curAttr, ' ']; // xterm
+  ch = [this.curAttr, '']; // xterm
 
   while (param-- && j < this.cols) {
     this.lines[row].splice(j++, 0, ch);
@@ -2804,7 +1861,7 @@ Terminal.prototype.cursorCharAbsolute = function(params) {
 
 // CSI Ps L
 // Insert Ps Line(s) (default = 1) (IL).
-Terminal.prototype.insertLines = function(params) {
+Terminal.prototype.insertLines = function(params) {//TODO optimize lines
   var param, row, j;
 
   param = params[0];
@@ -2828,7 +1885,7 @@ Terminal.prototype.insertLines = function(params) {
 
 // CSI Ps M
 // Delete Ps Line(s) (default = 1) (DL).
-Terminal.prototype.deleteLines = function(params) {
+Terminal.prototype.deleteLines = function(params) {//TODO optimize lines
   var param, row, j;
 
   param = params[0];
@@ -2852,14 +1909,14 @@ Terminal.prototype.deleteLines = function(params) {
 
 // CSI Ps P
 // Delete Ps Character(s) (default = 1) (DCH).
-Terminal.prototype.deleteChars = function(params) {
+Terminal.prototype.deleteChars = function(params) {//TODO optimize lines
   var param, row, ch;
 
   param = params[0];
   if (param < 1) param = 1;
 
   row = this.y + this.ybase;
-  ch = [this.curAttr, ' ']; // xterm
+  ch = [this.curAttr, '']; // xterm
 
   while (param--) {
     this.lines[row].splice(this.x, 1);
@@ -2869,7 +1926,7 @@ Terminal.prototype.deleteChars = function(params) {
 
 // CSI Ps X
 // Erase Ps Character(s) (default = 1) (ECH).
-Terminal.prototype.eraseChars = function(params) {
+Terminal.prototype.eraseChars = function(params) {//TODO optimize lines
   var param, row, j, ch;
 
   param = params[0];
@@ -2877,7 +1934,7 @@ Terminal.prototype.eraseChars = function(params) {
 
   row = this.y + this.ybase;
   j = this.x;
-  ch = [this.curAttr, ' ']; // xterm
+  ch = [this.curAttr, '']; // xterm
 
   while (param-- && j < this.cols) {
     this.lines[row][j++] = ch;
@@ -3147,7 +2204,7 @@ Terminal.prototype.setMode = function(params) {
         this.vt200Mouse = params === 1000;
         this.normalMouse = params > 1000;
         this.mouseEvents = true;
-        this.element.style.cursor = 'default';
+        //this.element.style.cursor = 'default';
         this.log('Binding to mouse events.');
         break;
       case 1004: // send focusin/focusout events
@@ -3182,8 +2239,9 @@ Terminal.prototype.setMode = function(params) {
         ; // FALL-THROUGH
       case 47: // alt screen buffer
       case 1047: // alt screen buffer
+        console.log(this.normal);
         if (!this.normal) {
-          var normal = {
+          var normal = {//TODO optimize lines
             lines: this.lines,
             ybase: this.ybase,
             ydisp: this.ydisp,
@@ -3197,8 +2255,15 @@ Terminal.prototype.setMode = function(params) {
             // glevel: this.glevel,
             // charsets: this.charsets
           };
+          
+          var isNotEmty = this.lines.some(function(l) {
+              return l.some(function(ch) {
+                  return ch[1];
+              });
+          });
+          
           this.reset();
-          this.normal = normal;
+          this.normal = isNotEmty && normal;
           this.showCursor();
         }
         break;
@@ -3335,7 +2400,7 @@ Terminal.prototype.resetMode = function(params) {
         this.vt200Mouse = false;
         this.normalMouse = false;
         this.mouseEvents = false;
-        this.element.style.cursor = '';
+        //this.element.style.cursor = '';
         break;
       case 1004: // send focusin/focusout events
         this.sendFocus = false;
@@ -3356,7 +2421,7 @@ Terminal.prototype.resetMode = function(params) {
         ; // FALL-THROUGH
       case 47: // normal screen buffer
       case 1047: // normal screen buffer - clearing it first
-        if (this.normal) {
+        if (this.normal) {//TODO optimize lines
           this.lines = this.normal.lines;
           this.ybase = this.normal.ybase;
           this.ydisp = this.normal.ydisp;
@@ -3418,7 +2483,7 @@ Terminal.prototype.cursorForwardTab = function(params) {
 };
 
 // CSI Ps S  Scroll up Ps lines (default = 1) (SU).
-Terminal.prototype.scrollUp = function(params) {
+Terminal.prototype.scrollUp = function(params) {//TODO optimize lines
   var param = params[0] || 1;
   while (param--) {
     this.lines.splice(this.ybase + this.scrollTop, 1);
@@ -3430,7 +2495,7 @@ Terminal.prototype.scrollUp = function(params) {
 };
 
 // CSI Ps T  Scroll down Ps lines (default = 1) (SD).
-Terminal.prototype.scrollDown = function(params) {
+Terminal.prototype.scrollDown = function(params) {//TODO optimize lines
   var param = params[0] || 1;
   while (param--) {
     this.lines.splice(this.ybase + this.scrollBottom, 1);
@@ -3473,10 +2538,10 @@ Terminal.prototype.cursorBackwardTab = function(params) {
 };
 
 // CSI Ps b  Repeat the preceding graphic character Ps times (REP).
-Terminal.prototype.repeatPrecedingCharacter = function(params) {
+Terminal.prototype.repeatPrecedingCharacter = function(params) {//TODO optimize lines
   var param = params[0] || 1
     , line = this.lines[this.ybase + this.y]
-    , ch = line[this.x - 1] || [this.defAttr, ' '];
+    , ch = line[this.x - 1] || [this.defAttr, ''];
 
   while (param--) line[this.x++] = ch;
 };
@@ -3654,7 +2719,7 @@ Terminal.prototype.restorePrivateValues = function(params) {
 //     Pt; Pl; Pb; Pr denotes the rectangle.
 //     Ps denotes the SGR attributes to change: 0, 1, 4, 5, 7.
 // NOTE: xterm doesn't enable this code by default.
-Terminal.prototype.setAttrInRectangle = function(params) {
+Terminal.prototype.setAttrInRectangle = function(params) {//TODO optimize lines
   var t = params[0]
     , l = params[1]
     , b = params[2]
@@ -3827,7 +2892,7 @@ Terminal.prototype.selectChangeExtent = function(params) {
 //     Pc is the character to use.
 //     Pt; Pl; Pb; Pr denotes the rectangle.
 // NOTE: xterm doesn't enable this code by default.
-Terminal.prototype.fillRectangle = function(params) {
+Terminal.prototype.fillRectangle = function(params) {//TODO optimize lines
   var ch = params[0]
     , t = params[1]
     , l = params[2]
@@ -3871,7 +2936,7 @@ Terminal.prototype.enableLocatorReporting = function(params) {
 //   Erase Rectangular Area (DECERA), VT400 and up.
 //     Pt; Pl; Pb; Pr denotes the rectangle.
 // NOTE: xterm doesn't enable this code by default.
-Terminal.prototype.eraseRectangle = function(params) {
+Terminal.prototype.eraseRectangle = function(params) {//TODO optimize lines
   var t = params[0]
     , l = params[1]
     , b = params[2]
@@ -3881,7 +2946,7 @@ Terminal.prototype.eraseRectangle = function(params) {
     , i
     , ch;
 
-  ch = [this.curAttr, ' ']; // xterm?
+  ch = [this.curAttr, '']; // xterm?
 
   for (; t < b + 1; t++) {
     line = this.lines[this.ybase + t];
@@ -3964,10 +3029,10 @@ Terminal.prototype.requestLocatorPosition = function(params) {
 // CSI P m SP }
 // Insert P s Column(s) (default = 1) (DECIC), VT420 and up.
 // NOTE: xterm doesn't enable this code by default.
-Terminal.prototype.insertColumns = function() {
+Terminal.prototype.insertColumns = function() {//TODO optimize lines
   var param = params[0]
     , l = this.ybase + this.rows
-    , ch = [this.curAttr, ' '] // xterm?
+    , ch = [this.curAttr, ''] // xterm?
     , i;
 
   while (param--) {
@@ -3983,10 +3048,10 @@ Terminal.prototype.insertColumns = function() {
 // CSI P m SP ~
 // Delete P s Column(s) (default = 1) (DECDC), VT420 and up
 // NOTE: xterm doesn't enable this code by default.
-Terminal.prototype.deleteColumns = function() {
+Terminal.prototype.deleteColumns = function(params) {//TODO optimize lines
   var param = params[0]
     , l = this.ybase + this.rows
-    , ch = [this.curAttr, ' '] // xterm?
+    , ch = [this.curAttr, ''] // xterm?
     , i;
 
   while (param--) {
@@ -4061,72 +3126,5 @@ Terminal.charsets.Swedish = null; // (H or (7
 Terminal.charsets.Swiss = null; // (=
 Terminal.charsets.ISOLatin = null; // /A
 
-/**
- * Helpers
- */
-
-function on(el, type, handler, capture) {
-  el.addEventListener(type, handler, capture || false);
-}
-
-function off(el, type, handler, capture) {
-  el.removeEventListener(type, handler, capture || false);
-}
-
-function cancel(ev) {
-  if (ev.preventDefault) ev.preventDefault();
-  ev.returnValue = false;
-  if (ev.stopPropagation) ev.stopPropagation();
-  ev.cancelBubble = true;
-  return false;
-}
-
-function inherits(child, parent) {
-  function f() {
-    this.constructor = child;
-  }
-  f.prototype = parent.prototype;
-  child.prototype = new f;
-}
-
-var isMac = ~navigator.userAgent.indexOf('Mac');
-
-// if bold is broken, we can't
-// use it in the terminal.
-function isBoldBroken() {
-  var el = document.createElement('span');
-  el.innerHTML = 'hello world';
-  document.body.appendChild(el);
-  var w1 = el.scrollWidth;
-  el.style.fontWeight = 'bold';
-  var w2 = el.scrollWidth;
-  document.body.removeChild(el);
-  return w1 !== w2;
-}
-
-var String = this.String;
-var setTimeout = this.setTimeout;
-var setInterval = this.setInterval;
-
-/**
- * Expose
- */
-
-Terminal.EventEmitter = EventEmitter;
-Terminal.isMac = isMac;
-Terminal.inherits = inherits;
-Terminal.on = on;
-Terminal.off = off;
-Terminal.cancel = cancel;
-
-if (typeof module !== 'undefined') {
-  module.exports = Terminal;
-} else {
-  this.Terminal = Terminal;
-}
-
-}).call(function() {
-  return this || (typeof window !== 'undefined' ? window : global);
-}());
-
+module.exports = Terminal
 });
