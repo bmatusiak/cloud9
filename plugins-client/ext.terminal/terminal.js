@@ -165,7 +165,7 @@ module.exports = ext.register("ext/terminal/terminal", {
         barTerminal.firstChild.blur = function() {
             ace.blur();
         };
-        
+        /*
         var cm = commands;
         // TODO find better way for terminal and ace commands to coexist
         setTimeout(function() {
@@ -201,7 +201,7 @@ module.exports = ext.register("ext/terminal/terminal", {
         ace.commands.exec = function(command) {
             return cm.exec(command);
         };
-        
+        */
         return container.ace = ace;
     },
 
@@ -363,20 +363,20 @@ module.exports = ext.register("ext/terminal/terminal", {
             }
         });
 
-        // ide.addEventListener("init.ext/console/console", function() {
-        //     cliBox.appendChild(new apf.button({
-        //         "skin":"c9-simple-btn",
-        //         "class":"btn-terminal",
-        //         "margin": "6 0 0 4",
-        //         "caption":"Open a Terminal",
-        //         "icon" : "terminal_tab_icon.png",
-        //         "onclick": "require('ext/terminal/terminal').openNewTerminal();"
-        //     }), btnCollapseConsole);
-        //     cliBox.appendChild(new apf.divider({
-        //         "skin":"divider_console",
-        //         "margin": "2 0 2 7"
-        //     }), btnCollapseConsole);
-        // });
+        ide.addEventListener("init.ext/console/console", function() {
+            cliBox.appendChild(new apf.button({
+                "skin":"c9-simple-btn",
+                "class":"btn-terminal",
+                "margin": "6 0 0 4",
+                "caption":"Open a Terminal",
+                "icon" : "terminal_tab_icon.png",
+                "onclick": "require('ext/terminal/terminal').openNewTerminal();"
+            }), btnCollapseConsole);
+            cliBox.appendChild(new apf.divider({
+                "skin":"divider_console",
+                "margin": "2 0 2 7"
+            }), btnCollapseConsole);
+        });
     },
     
     addCss : function() {
