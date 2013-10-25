@@ -889,7 +889,7 @@ Terminal.prototype.startBlink = function() {
   if (!Terminal.cursorBlink) return;
   var self = this;
   this._blinker = function() {
-    self.cursorBlink();
+    if(window.getSelection && !window.getSelection().toString().length) self.cursorBlink();
   };
   this._blink = setInterval(this._blinker, 500);
 };
@@ -2040,8 +2040,9 @@ Terminal.prototype.keyDown = function(ev) {
     case 86: case 67:
       // We're ignoring these keys, because they will have been handled by the IDE's copy and/or paste
       if ((!isMac && ev.ctrlKey) || (isMac && ev.metaKey)) {
-          if(this.lastKey === ev.keyCode)
+          if(window.getSelection && !window.getSelection().toString().length){
             defaultHandle();
+          }
         break;
       }
       defaultHandle();
