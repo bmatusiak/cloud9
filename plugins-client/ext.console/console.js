@@ -420,6 +420,12 @@ module.exports = ext.register("ext/console/console", {
         apf.setStyleClass(containerEl, "has_pid");
 
         this.command_id_tracer++;
+        if(lang == "Node"){
+            ide.send({
+                command: "node-check",
+                sender: "noderunner"
+            });
+        }
         return command_id;
     },
 

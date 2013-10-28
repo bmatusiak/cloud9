@@ -47,6 +47,7 @@ exports.factory = function(vfs, sandbox, root, url, listenHint, nodePath, nodeVe
     };
 };
 
+var persistPort;
 var Runner = exports.Runner = function(vfs, options, callback) {
     var self = this;
 
@@ -68,16 +69,19 @@ var Runner = exports.Runner = function(vfs, options, callback) {
     }
 
     // first we need to get an open port
-    options.sandbox.getPort(function (err, port) {
+    options.sandbox.getPort(function (err, randPort) {
         if (err) {
             return console.error("getPort failed");
         }
+        var port = persistPort || randPort;
+        if(!persistPort) persistPort = port;
 
         // the port flag is only present in the precompiled binaries that we provide
         // in the hosted version, so only add it then
         if (options.usePort) {
             self.nodeArgs.push("--ports=" + port);
         }
+        
 
         // then create a url.
         // this can be passed in as an option, or we can construct it
@@ -112,9 +116,7 @@ var Runner = exports.Runner = function(vfs, options, callback) {
             // process dies? then we die as well
             if (msg.type === "node-exit") {
                 return options.eventEmitter.removeListener(options.eventName, messageListener);
-            }
-
-            if (msg.type === "node-start") {
+            }else if (msg.type === "node-start") {
                 var info = [
                     "Your code is running at '" + url + "'.",
                     options.listenHint
@@ -128,6 +130,7 @@ var Runner = exports.Runner = function(vfs, options, callback) {
                     pid: msg.pid
                 });
             }
+            
         };
         options.eventEmitter.on(options.eventName, messageListener);
 

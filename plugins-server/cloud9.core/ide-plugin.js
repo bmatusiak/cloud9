@@ -82,7 +82,17 @@ module.exports = function setup(options, imports, register) {
         connect.useAuth(baseUrl, server);
         connect.useStart(connectModule.query());
         connect.useSession(connectModule.csrf());
-
+        
+        server.use("/quit",function(req, res, next) {
+            res.writeHead(302, {
+                'Location': process.env.URL || "http://c9.io"
+            });
+            res.end(); 
+            setTimeout(function() {
+                process.exit();    
+            }, 0);
+        });
+        
         server.use(function(req, res, next) {
             req.parsedUrl = parseUrl(req.url);
 

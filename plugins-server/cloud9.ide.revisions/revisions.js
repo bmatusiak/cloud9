@@ -32,6 +32,8 @@ var name = "revisions";
 
 module.exports = function setup(options, imports, register) {
     var fs;
+    REV_FOLDER_NAME = options.prefix || REV_FOLDER_NAME
+    REV_FOLDER_NAME = options.suffix ? REV_FOLDER_NAME+options.suffix : REV_FOLDER_NAME;
 
     function RevisionsPlugin(ide, workspace) {
         Plugin.call(this, ide, workspace);

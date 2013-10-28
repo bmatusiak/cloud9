@@ -23,6 +23,8 @@ var projectDir = (argv.w && path.resolve(process.cwd(), argv.w)) || process.cwd(
 var fsUrl = "/workspace";
 var vfsUrl = "/vfs";
 
+console.log("projectDir",projectDir)
+
 var port = argv.p || process.env.PORT || 3131;
 var host = argv.l || process.env.IP || "localhost";
 var debugPort = argv.b || process.env.DEBUG_PORT || 5858;
@@ -67,7 +69,7 @@ var config = [
         debug: false,
         fsUrl: fsUrl,
         smithIo: {
-            port: port,
+            //port: port,
             prefix: "/smith.io-ide"
         },
         hosted: false,
@@ -169,13 +171,13 @@ var config = [
     },
     {
         packagePath: "./connect.session",
-        key: "cloud9.sid." + port,
+        key: "cloud9.sid",
         secret: "v1234"
     },
     {
-        packagePath: "./connect.session.file",
-        sessionsPath: __dirname + "/../.sessions",
-        maxAge: 7 * 24 * 60 * 60 * 1000
+        packagePath: "./connect.session.mongoose"
+        //,sessionsPath: __dirname + "/../.sessions",
+        //maxAge: 7 * 24 * 60 * 60 * 1000
     },
     "./cloud9.permissions",
     {
@@ -188,12 +190,14 @@ var config = [
     "./cloud9.run.shell",
     {
         packagePath: "./cloud9.run.node",
-        listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host."
+        listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host.",
+        url:process.env.URL
     },
     {
         packagePath: "./cloud9.run.node-debug",
         listenHint: "Important: in your scripts, use 'process.env.PORT' as port and '0.0.0.0' as host.",
-        debugPort: debugPort
+        debugPort: debugPort,
+        url:process.env.URL
     },
     "./cloud9.run.npm",
     "./cloud9.run.npmnode",
@@ -219,10 +223,14 @@ var config = [
     "./cloud9.ide.run-ruby",
     "./cloud9.ide.run-php",
     "./cloud9.run.python",
-    "./cloud9.ide.revisions",
+    {
+        packagePath:"./cloud9.ide.revisions",
+        prefix:".c9revisions",
+        suffix:projectDir.split("/").join(".")
+    },
     {
         packagePath: "./cloud9.ide.settings",
-        settingsPath: ".settings"
+        settingsPath: ".settings"+projectDir.split("/").join(".")
     },
     "./cloud9.ide.shell",
     "./cloud9.ide.state",
@@ -251,5 +259,5 @@ if(hasPTYJS){
         cwd:projectDir
     })
 }
-
+process.title = "cloud9:"+port+" "+projectDir;
 module.exports = config;

@@ -22,7 +22,13 @@ module.exports = function(options, imports, register) {
                 callback(null, options.unixId || null);
             },
             getPort: function(callback) {
+                if(process.env.APPPORT) return callback(null,process.env.APPPORT);
                 // grab a free port
+                netutil.findFreePort(20000, 64000, options.host, function (err, port) {
+                    callback(err, port);
+                });
+            },
+            getDebugPort: function(callback) {
                 netutil.findFreePort(20000, 64000, options.host, function (err, port) {
                     callback(err, port);
                 });
