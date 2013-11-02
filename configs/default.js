@@ -225,12 +225,12 @@ var config = [
     "./cloud9.run.python",
     {
         packagePath:"./cloud9.ide.revisions",
-        prefix:".c9revisions",
+        prefix:"../.c9revisions",
         suffix:projectDir.split("/").join(".")
     },
     {
         packagePath: "./cloud9.ide.settings",
-        settingsPath: ".settings"+projectDir.split("/").join(".")
+        settingsPath: "../.settings"+projectDir.split("/").join(".")
     },
     "./cloud9.ide.shell",
     "./cloud9.ide.state",
